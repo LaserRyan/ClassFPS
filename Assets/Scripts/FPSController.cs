@@ -19,6 +19,13 @@ public sealed class FPSController : MonoBehaviour
     private float verticalVelocity;
     private float pitch;
     private bool cursorCaptureRequested;
+    private int gameplayInputFrame = -1;
+
+    public Camera PlayerCamera => playerCamera;
+    public bool CanAcceptGameplayInput => isActiveAndEnabled &&
+        gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
+        Application.isFocused && Cursor.lockState == CursorLockMode.Locked &&
+        Time.timeScale > 0f;
 
     private void Awake()
     {
@@ -76,6 +83,7 @@ public sealed class FPSController : MonoBehaviour
         ApplyCursorState();
         bool acceptInput = cursorCaptureRequested && Application.isFocused &&
             Cursor.lockState == CursorLockMode.Locked && !capturedThisFrame;
+        gameplayInputFrame = acceptInput ? Time.frameCount : -1;
 
         if (acceptInput && mouse != null)
         {

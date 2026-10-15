@@ -110,6 +110,8 @@ separate child GameObject.
   camera pitch, and suppresses gameplay input for that frame. Respawn never requests
   cursor capture. Existing disabled weapons remain disabled across respawns.
 - Weapon exposes shared reset/block hooks; SwordWeapon cancels unfinished swings.
+  Lifecycle also hides active gun/sword presentation objects while dead and restores
+  only those previously active on respawn; unequipped visuals stay hidden.
   GunPresentation and SwordPresentation expose visual resets. PlayerDeathHUD draws
   the death/countdown message separately from health. F8/F9 cannot bypass death.
 - `TrainingBot.cs` reuses PlayerHealth for configurable actor health and IDamageable
@@ -134,6 +136,23 @@ separate child GameObject.
   configurations and separate Editor compilation passed. Source/docs whitespace
   checked. No Unity setup/Play mode/physics/rendering/build execution was performed.
   Existing user scene changes were preserved; no scene YAML was manually edited.
+
+### Player weapon test audio
+
+- `PlayerWeaponAudio.cs` is a separate player-only audio subscriber. Accepted
+  HitscanGun.ShotFired plays `Assets/Audio/pew.wav`; accepted SwordWeapon.SwingStarted
+  plays `Assets/Audio/Shing.wav` once at swing start, including windup. Damage/hit
+  feedback does not trigger sound. Rejected attacks/recapture clicks stay silent.
+- **Tools > ClassFPS > Set Up Player Weapon Audio** adds/reuses a Player child with
+  one AudioSource and the audio component, wires existing weapons/clips, and saves
+  with Editor APIs. Source is non-spatial (spatialBlend 0), no loop/play-on-awake.
+  Inspector clip and per-weapon volume tuning is preserved on repeated setup.
+- Audio unsubscribes/stops on disable and stops on player death. Training bot and
+  projectile audio remain absent. No spatial audio system or audio packages added.
+- Run setup in Unity after script import; agent has not executed setup or listened
+  in Play mode. Check one sound per accepted click, no held-click repeats, no sound
+  on damage feedback or rejected clicks, silent bot, and no duplicate audio after
+  death/respawn. Instructions also appear in `TRAINING_TEST.md`.
 
 ### Gun visuals
 

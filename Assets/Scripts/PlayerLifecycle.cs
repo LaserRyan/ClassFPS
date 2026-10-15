@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(PlayerHealth), typeof(FPSController))]
@@ -9,6 +10,7 @@ public sealed class PlayerLifecycle : MonoBehaviour
     private PlayerHealth health;
     private FPSController movement;
     private Weapon[] weapons;
+    private readonly List<GameObject> hiddenPresentations = new List<GameObject>();
     private Vector3 initialPosition;
     private Quaternion initialFacing;
     private float respawnAt;
@@ -46,6 +48,10 @@ public sealed class PlayerLifecycle : MonoBehaviour
         health.DamageBlocked = true;
         movement.SetGameplayBlocked(true);
         ResetWeapons(true);
+        foreach (GunPresentation view in GetComponentsInChildren<GunPresentation>(true))
+            HidePresentation(view.gameObject);
+        foreach (SwordPresentation view in GetComponentsInChildren<SwordPresentation>(true))
+            HidePresentation(view.gameObject);
     }
 
     private void Update()
@@ -57,6 +63,10 @@ public sealed class PlayerLifecycle : MonoBehaviour
         // State remains blocked throughout repositioning and health notification.
         health.RestoreFullHealth();
         ResetWeapons(false);
+        foreach (GameObject view in hiddenPresentations)
+            if (view != null)
+                view.SetActive(true);
+        hiddenPresentations.Clear();
         IsDead = false;
         health.DamageBlocked = false;
         movement.SetGameplayBlocked(false);
@@ -71,5 +81,14 @@ public sealed class PlayerLifecycle : MonoBehaviour
             view.ResetPresentation();
         foreach (SwordPresentation view in GetComponentsInChildren<SwordPresentation>(true))
             view.ResetPresentation();
+    }
+
+    private void HidePresentation(GameObject view)
+    {
+        // Restore only visuals that were active before death; keep unequipped ones hidden.
+        if (!view.activeSelf)
+            return;
+        hiddenPresentations.Add(view);
+        view.SetActive(false);
     }
 }

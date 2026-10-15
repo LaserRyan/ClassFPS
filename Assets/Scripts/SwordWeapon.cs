@@ -18,6 +18,7 @@ public sealed class SwordWeapon : Weapon
     private WeaponAttackContext attack;
     private float startedAt;
     private float previousElapsed;
+    public event System.Action SwingStarted;
     public bool IsSwinging { get; private set; }
     public float Windup => Mathf.Max(0f, windup);
     public float ActiveDuration => Mathf.Max(0.01f, activeDuration);
@@ -44,6 +45,7 @@ public sealed class SwordWeapon : Weapon
         previousElapsed = -1f;
         IsSwinging = true;
         ReportAttack(false);
+        SwingStarted?.Invoke();
     }
 
     private void LateUpdate()

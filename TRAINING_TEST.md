@@ -44,6 +44,8 @@ one explicitly. Keep lifecycle, health, and controller enabled for normal testin
    full health each respawn, and no duplicate damage/subscriptions or stale swings.
 5. Die during a sword windup/active swing and while jumping/falling. There must be
    no delayed sword damage, carried velocity, retained slash pose, flash, or tracer.
+   The held sword/gun must disappear throughout death and return at rest on respawn.
+   Repeat with each weapon setup; the other weapon's hidden presentation must stay hidden.
 6. While dead, press Escape or switch applications. On respawn, the cursor must stay
    released until clicked. The click that recaptures must not attack. Repeat without
    releasing: existing capture should remain usable after respawn.
@@ -72,6 +74,26 @@ Already-fired projectiles continue until impact/timeout even after the bot dies.
 Restart Play mode to bring back the saved bot; no in-game bot respawn was added.
 
 ## Collision and regression checks (Unity required)
+
+### Optional player weapon test audio
+
+Stop Play mode and choose **Tools > ClassFPS > Set Up Player Weapon Audio**.
+It assigns `Assets/Audio/pew.wav` to accepted player gunshots and
+`Assets/Audio/Shing.wav` to accepted sword swing starts. Audio is non-spatial;
+training bot/projectiles stay silent. The player audio child stays separate from
+the weapon visuals. Tune clips and per-weapon volumes on Player Weapon Audio.
+Run setup again if adding another weapon component later; it refreshes weapon
+references without resetting assigned clips/volume. It does not equip a weapon.
+
+Test each weapon with its existing Editor setup: one clip per accepted click,
+including misses, no held-click repeats, no sounds on cooldown/recovery rejections,
+cursor recapture, or extra damage callbacks. Death must stop playing weapon audio;
+respawn must not play a sound automatically. Run audio setup twice and verify one
+AudioSource/component, not doubled sound. Ensure Game view Mute Audio is off and
+the existing camera AudioListener is enabled. Agent compilation is checked, but
+audible playback and setup execution require Unity testing.
+
+### Projectile and gameplay regressions
 
 - Put a solid cube across the lane during Play mode. Shots disappear against it;
   Player/targets behind it take no damage. Remove it to resume the lane test.

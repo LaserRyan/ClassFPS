@@ -85,8 +85,8 @@ the weapon visuals. Tune clips and per-weapon volumes on Player Weapon Audio.
 Run setup again if adding another weapon component later; it refreshes weapon
 references without resetting assigned clips/volume. It does not equip a weapon.
 
-Test each weapon with its existing Editor setup: one clip per accepted click,
-including misses, no held-click repeats, no sounds on cooldown/recovery rejections,
+Test each weapon with its existing Editor setup: one clip per accepted shot/swing,
+including misses; held left-click repeats at weapon readiness, with no sounds on rejected retries during cooldown/recovery,
 cursor recapture, or extra damage callbacks. Death must stop playing weapon audio;
 respawn must not play a sound automatically. Run audio setup twice and verify one
 AudioSource/component, not doubled sound. Ensure Game view Mute Audio is off and

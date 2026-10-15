@@ -22,7 +22,7 @@ SwordWeapon Inspector settings:
 - Attack Cooldown: additional shared start-to-start gate, default zero; the entire
   swing always prevents overlap regardless of this value.
 
-One click starts one swing; holding does not repeat. Damage begins after windup.
+One click starts one swing; holding starts another as soon as recovery and cooldown finish. Damage begins after windup.
 The active volume follows current camera position/look, ignores triggers and the
 player hierarchy, and resolves IDamageable on collider parents. A receiver is
 recorded once per swing, regardless of its child collider count. Closest collider
@@ -52,7 +52,7 @@ on complex shapes. Prefer primitive child colliders for damage receiver hitboxes
 1. Run setup and enter Play mode. Check sword visibility, near-plane clearance,
    windup, slash, recovery, and unchanged movement/look/jumping.
 2. Click a nearby target: no health loss during windup, then exactly 35 damage.
-   Hold the button: no repeat. Click repeatedly during recovery: no overlap or queue.
+   Hold the button: swings repeat after recovery, without overlap. Release during recovery: no queued swing should follow.
 3. Add multiple child colliders to one TargetHealth root: each swing still deals
    only 35 total. Confirm three swings defeat a default target and re-enable resets it.
 4. Test targets at the reach/arc boundaries, off-center, behind, and beyond reach.
@@ -60,7 +60,7 @@ on complex shapes. Prefer primitive child colliders for damage receiver hitboxes
 5. Put a solid wall between camera and target, including at point-blank distance.
    Confirm no damage; test thin walls and a camera origin inside a blocker as well.
 6. Escape or lose focus during windup/active: no subsequent damage. Click to capture:
-   no swing. A fresh subsequent click can swing. Disable SwordWeapon mid-swing and
+   no swing. Release the capture click; a fresh subsequent press/hold can swing. Disable SwordWeapon mid-swing and
    re-enable it: no delayed damage and presentation returns to rest.
 7. Check red feedback only on accepted damage and no feedback on rejected clicks.
    Lower the frame rate and verify swings do not miss their entire active interval.

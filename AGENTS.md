@@ -55,7 +55,7 @@ separate child GameObject.
 
 - `PlayerCombatInput.cs` routes mouse buttons to the equipped `Weapon` in LateUpdate,
   after movement/look Update. Left-click calls PrimaryAttack; right-click calls
-  SecondaryAttack, whose default implementation does nothing. Fire is per click.
+  SecondaryAttack, whose default implementation does nothing. Holding left-click retries PrimaryAttack each frame; weapons gate cooldown/recovery. Capture clicks and holds through blocked gameplay require release before attacking.
 - `Weapon.cs` is a small abstract base exposing Inspector damage, range, and cooldown.
   `WeaponAttackContext` carries the owner and aim ray without prescribing hit detection.
 - `HitscanGun.cs` implements one primary hitscan attack using the camera-center ray
@@ -150,7 +150,7 @@ separate child GameObject.
 - Audio unsubscribes/stops on disable and stops on player death. Training bot and
   projectile audio remain absent. No spatial audio system or audio packages added.
 - Run setup in Unity after script import; agent has not executed setup or listened
-  in Play mode. Check one sound per accepted click, no held-click repeats, no sound
+  in Play mode. Check one sound per accepted shot/swing, held attacks repeat at readiness, no sound
   on damage feedback or rejected clicks, silent bot, and no duplicate audio after
   death/respawn. Instructions also appear in `TRAINING_TEST.md`.
 
@@ -233,7 +233,7 @@ Next work should start with Play mode validation:
   Retest ordinary targets and non-convex mesh walls in Play mode; not agent-verified.
   User has since run Unity setup/testing; do not assume the scene is still gun-only.
 
-- `SwordWeapon.cs` extends the existing `Weapon` base and uses the existing per-click
+- `SwordWeapon.cs` extends the existing `Weapon` base and uses the existing shared
   `PlayerCombatInput`; no inventory, switching controls, hero system, or audio exists.
 - Inspector tuning: inherited damage/reach (`Range`)/cooldown, plus full attack arc,
   windup, active duration, and recovery. Defaults: 35 damage, 2.2 m reach, 100-degree

@@ -1,0 +1,51 @@
+# Unity generated files and local editor state
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Bb]uild/
+/[Bb]uilds/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# IDE caches and generated solution/project files
+/.vs/
+/.idea/
+/.vscode/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.opendb
+*.VC.db
+
+# Build artifacts and crash reports
+*.apk
+*.aab
+*.unitypackage
+sysinfo.txt
+mono_crash.*
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local credentials
+.env
+.env.*
+!.env.example
+/.aws/
+*.keystore
+*.jks
+
+# Preserve all Unity source assets and their metadata.
+!/Assets/**
+!/Packages/**
+!/ProjectSettings/**

@@ -138,6 +138,49 @@ Next work should start with Play mode validation:
 
 ## Git workflow and session state
 
+### Sword prototype implementation (2026-10-15)
+
+- Follow-up fix: guard `Collider.ClosestPoint` to primitive/convex colliders only;
+  non-convex meshes and terrain use collider surface probes for target contacts.
+  Occlusion casts run both directions to catch back-facing mesh surfaces. Complex
+  concave damage receivers use sampled contacts; prefer primitive child hitboxes
+  for predictable melee coverage. Runtime/Editor compilation passed after this fix.
+  Retest ordinary targets and non-convex mesh walls in Play mode; not agent-verified.
+  User has since run Unity setup/testing; do not assume the scene is still gun-only.
+
+- `SwordWeapon.cs` extends the existing `Weapon` base and uses the existing per-click
+  `PlayerCombatInput`; no inventory, switching controls, hero system, or audio exists.
+- Inspector tuning: inherited damage/reach (`Range`)/cooldown, plus full attack arc,
+  windup, active duration, and recovery. Defaults: 35 damage, 2.2 m reach, 100-degree
+  arc, 0.18 / 0.16 / 0.30 s phases, zero additional cooldown.
+- During active time, an overlapping spherical sector follows camera aim. Parent
+  `IDamageable` lookup and a per-swing receiver set prevent duplicate damage from
+  repeated frames or child colliders. Visibility queries block damage through solid
+  obstacles; containing blockers are checked explicitly. Player colliders and
+  triggers are ignored. The query uses default raycast layers.
+- Swing duration gates attacks. Disabling the weapon, releasing cursor capture,
+  focus loss, or disabling movement cancels pending damage. A low-frame-rate step
+  crossing the active interval still evaluates the attack once.
+- `SwordPresentation.cs` separately animates a collider-free placeholder pivot
+  through windup/slash/recovery; pose angles are exposed. Damage remains independent
+  of the model. Accepted swings and damage reuse `Weapon.AttackFeedback`.
+- **Tools > ClassFPS > Set Up Sword Test** (`SwordTestSetup.cs`) equips the sword,
+  disables player HitscanGun components, hides gun presentation, and creates/reuses
+  the sword and shared URP materials. It preserves existing targets, obstacles,
+  gun scripts/assets, and tuned sword settings. It saves through Unity Editor APIs.
+  Repeated runs do not add duplicate swords or visuals. Existing targets can be
+  approached on foot; no additional targets are created.
+- Setup has **not** been executed by the agent; the saved scene still has its prior
+  gun configuration until the user runs this command. No scene YAML was edited.
+- Runtime C# and Editor C# compiled separately against installed Unity 6000.3.26f1
+  assemblies (runtime also references installed Input System). Standalone compiler
+  warnings for Inspector-assigned fields are expected. Whitespace checks passed.
+- No connected live Editor was available. Setup execution/repeat safety, rendering,
+  physics, and gameplay were **not** interactively tested. `SWORD_TEST.md` documents
+  exact setup and remaining Play mode checks: reach/arc, delayed active damage,
+  recovery, held clicks, repeated hits, multiple child colliders, walls, capture and
+  recapture, cancellation, and movement regressions. Run those before visual tuning.
+
 Recent commits at handoff:
 - `4924eaf` Add placeholder gun, shot effects, and visual recoil
 - `4d92286` Add hitscan shooting, target health, and obstacle colors

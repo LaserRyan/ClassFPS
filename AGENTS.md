@@ -69,6 +69,72 @@ separate child GameObject.
 - `CombatCrosshair.cs` draws a centered crosshair with brief yellow firing feedback
   and red successful-damage feedback. No feedback is emitted for rejected cooldowns.
 
+### Player health and HUD
+
+- `PlayerHealth.cs` implements `IDamageable` on Player. Inspector Maximum Health
+  defaults to 100; a new session starts full and current health stays within zero
+  and maximum. Invalid/nonpositive damage is ignored. Health itself has no death
+  behavior; optional PlayerLifecycle now supplies player death/respawn separately.
+- `HealthChanged(current, maximum)` drives the separate `PlayerHealthHUD.cs`.
+  It caches fill/text from events and draws a bottom-left bar using OnGUI, matching
+  the crosshair's existing UI approach. It subscribes on enable, unsubscribes on
+  disable, and refreshes immediately on binding. No per-frame health polling.
+- Health has no input/UI/local-player/global dependencies. `SetMaximumHealth`
+  permits future actor-specific values; `RestoreFullHealth` explicitly restores.
+  Disable/re-enable preserves health. No networking or authority system is added;
+  future multiplayer work must bind the local HUD and authorize damage separately.
+- `PlayerHealthDebugInput.cs`: F8 applies configurable test damage (default 25);
+  F9 restores full health. Per-press input runs in LateUpdate only in the Editor or
+  DEVELOPMENT_BUILD and requires `CanAcceptGameplayInput`, including recapture-frame
+  suppression. Release builds contain no test-input logic. No audio is added.
+- **Tools > ClassFPS > Set Up Player Health HUD** adds/reuses health/debug components
+  and one HUD child, binds the player reference, preserves tuned values, and saves
+  through Editor APIs. It leaves equipped weapons, movement, targets, and obstacles
+  unchanged. No health setup/scene changes have been executed by the agent.
+- Exact instructions and pending gameplay checks: `PLAYER_HEALTH.md`. Validate
+  setup repeat safety, full start, damage/restore/clamping, custom maximum, HUD
+  subscription lifecycle, cursor/focus/recapture gating, and weapon/movement behavior.
+- Agent checks: runtime C# compiled against installed Unity/Input System assemblies
+  in Editor, development, and release configurations; Editor scripts compiled
+  separately. All passed with Inspector-assigned-field warnings and an unused test
+  damage field warning in release. No Unity Play mode or build execution was run.
+
+### Death, respawn, and training bot
+
+- `PlayerLifecycle.cs` subscribes to PlayerHealth, enters death once, blocks further
+  damage and gameplay, resets attacks/presentation, and respawns after one scaled
+  timestamp (Inspector delay defaults to 3 seconds). No coroutine timers accumulate.
+- `FPSController.SetGameplayBlocked` stops movement/look/gravity while retaining
+  Escape, focus, and cursor processing. `ResetAtSpawn` temporarily disables the
+  CharacterController, teleports to spawn position/yaw, clears vertical velocity and
+  camera pitch, and suppresses gameplay input for that frame. Respawn never requests
+  cursor capture. Existing disabled weapons remain disabled across respawns.
+- Weapon exposes shared reset/block hooks; SwordWeapon cancels unfinished swings.
+  GunPresentation and SwordPresentation expose visual resets. PlayerDeathHUD draws
+  the death/countdown message separately from health. F8/F9 cannot bypass death.
+- `TrainingBot.cs` reuses PlayerHealth for configurable actor health and IDamageable
+  child-collider lookup, and destroys its root at zero. It never tracks Player;
+  muzzle.forward determines shot direction. Inspector defaults: 1 s interval,
+  4 m/s speed, 25 damage, 5 s lifetime. Existing shots survive bot destruction.
+- `StraightProjectile.cs` is reusable by future spells: Launch takes owner,
+  direction, speed, damage, lifetime. Start overlaps and nearest-hit sphere sweeps
+  catch impacts, ignore owner/trigger colliders, and consume each projectile once.
+  It needs no Rigidbody/collider and destroys itself on impact/timeout.
+- **Tools > ClassFPS > Set Up Respawn and Training Bot** reuses health HUD setup,
+  adds/reuses lifecycle, death HUD, spawnpoint and bot, creates URP materials and
+  `Assets/Prefabs/TrainingProjectile.prefab`, and saves through Editor APIs. First
+  setup places Player at (7, 0.05, 0), beside the bot's x=10 firing lane. Bot starts
+  at (10, 0, 8), facing -Z. Repeated setup preserves tuning and poses.
+- Existing Set Up Shooting Test now explicitly enables the gun, disables sword,
+  and restores gun/hides sword presentation, allowing separate weapon tests using
+  Editor setup only. No gameplay switching was added.
+- `TRAINING_TEST.md` has exact setup, damage/death/repeated respawn/cursor tests,
+  projectile wall/timeout/high-speed tests, and gun/sword bot defeat checks.
+- Agent verification: standalone runtime compilation in Editor/development/release
+  configurations and separate Editor compilation passed. Source/docs whitespace
+  checked. No Unity setup/Play mode/physics/rendering/build execution was performed.
+  Existing user scene changes were preserved; no scene YAML was manually edited.
+
 ### Gun visuals
 
 - `GunPresentation.cs` is separate from input, damage, and the shared weapon base.

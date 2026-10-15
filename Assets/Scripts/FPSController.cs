@@ -20,9 +20,12 @@ public sealed class FPSController : MonoBehaviour
     private float pitch;
     private bool cursorCaptureRequested;
     private int gameplayInputFrame = -1;
+    private bool gameplayBlocked;
+    private int suppressGameplayThroughFrame = -1;
 
     public Camera PlayerCamera => playerCamera;
-    public bool CanAcceptGameplayInput => isActiveAndEnabled &&
+    public bool CanAcceptGameplayInput => isActiveAndEnabled && !gameplayBlocked &&
+        Time.frameCount > suppressGameplayThroughFrame &&
         gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
         Application.isFocused && Cursor.lockState == CursorLockMode.Locked &&
         Time.timeScale > 0f;
@@ -82,8 +85,13 @@ public sealed class FPSController : MonoBehaviour
 
         ApplyCursorState();
         bool acceptInput = cursorCaptureRequested && Application.isFocused &&
-            Cursor.lockState == CursorLockMode.Locked && !capturedThisFrame;
+            Cursor.lockState == CursorLockMode.Locked && !capturedThisFrame && !gameplayBlocked &&
+            Time.frameCount > suppressGameplayThroughFrame;
         gameplayInputFrame = acceptInput ? Time.frameCount : -1;
+
+        // Keep cursor/Escape processing alive while dead, without movement or gravity.
+        if (gameplayBlocked)
+            return;
 
         if (acceptInput && mouse != null)
         {
@@ -127,6 +135,29 @@ public sealed class FPSController : MonoBehaviour
             verticalVelocity = GroundedVelocity;
         if ((collisions & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
             verticalVelocity = 0f;
+    }
+
+    public void SetGameplayBlocked(bool blocked)
+    {
+        gameplayBlocked = blocked;
+        gameplayInputFrame = -1;
+    }
+
+    public void ResetAtSpawn(Vector3 position, Quaternion facing)
+    {
+        if (controller == null)
+            controller = GetComponent<CharacterController>();
+        bool wasEnabled = controller.enabled;
+        controller.enabled = false;
+        transform.SetPositionAndRotation(position, Quaternion.Euler(0f, facing.eulerAngles.y, 0f));
+        verticalVelocity = 0f;
+        pitch = 0f;
+        if (playerCamera != null)
+            playerCamera.transform.localRotation = Quaternion.identity;
+        controller.enabled = wasEnabled;
+        gameplayInputFrame = -1;
+        suppressGameplayThroughFrame = Time.frameCount;
+        // Do not alter cursorCaptureRequested: respawning is not a capture action.
     }
 
     private void SetCursorCaptured(bool captured)

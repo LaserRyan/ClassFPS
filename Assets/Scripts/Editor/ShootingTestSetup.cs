@@ -73,6 +73,23 @@ public static class ShootingTestSetup
             input = Undo.AddComponent<PlayerCombatInput>(player);
         Undo.RecordObject(input, "Equip gun");
         input.EquippedWeapon = gun;
+        Undo.RecordObject(gun, "Enable gun attacks");
+        gun.enabled = true;
+        foreach (SwordWeapon sword in player.GetComponentsInChildren<SwordWeapon>(true))
+        {
+            Undo.RecordObject(sword, "Disable test sword");
+            sword.enabled = false;
+        }
+        foreach (SwordPresentation view in player.GetComponentsInChildren<SwordPresentation>(true))
+        {
+            Undo.RecordObject(view.gameObject, "Hide sword visual");
+            view.gameObject.SetActive(false);
+        }
+        foreach (GunPresentation view in player.GetComponentsInChildren<GunPresentation>(true))
+        {
+            Undo.RecordObject(view.gameObject, "Show gun visual");
+            view.gameObject.SetActive(true);
+        }
         if (player.GetComponent<CombatCrosshair>() == null)
             Undo.AddComponent<CombatCrosshair>(player);
 

@@ -35,7 +35,9 @@ public sealed class SwordPresentation : MonoBehaviour
     private static float Smooth(float elapsed, float duration) =>
         Mathf.SmoothStep(0f, 1f, duration <= 0f ? 1f : Mathf.Clamp01(elapsed / duration));
 
-    private void OnDisable()
+    private void OnDisable() => ResetPresentation();
+
+    public void ResetPresentation()
     {
         if (model != null)
             model.localRotation = Quaternion.Euler(restAngles);

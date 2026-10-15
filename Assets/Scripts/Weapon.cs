@@ -23,13 +23,22 @@ public abstract class Weapon : MonoBehaviour
     // True means an attack actually dealt damage, rather than just hitting scenery.
     public event Action<bool> AttackFeedback;
     private float nextAttackTime;
+    private bool attacksBlocked;
+
+    public void SetAttacksBlocked(bool blocked)
+    {
+        attacksBlocked = blocked;
+        ResetAttackState();
+    }
+
+    public virtual void ResetAttackState() => nextAttackTime = 0f;
 
     public abstract void PrimaryAttack(WeaponAttackContext context);
     public virtual void SecondaryAttack(WeaponAttackContext context) { }
 
     protected bool TryBeginAttack()
     {
-        if (!isActiveAndEnabled || Time.time < nextAttackTime)
+        if (attacksBlocked || !isActiveAndEnabled || Time.time < nextAttackTime)
             return false;
 
         nextAttackTime = Time.time + attackCooldown;

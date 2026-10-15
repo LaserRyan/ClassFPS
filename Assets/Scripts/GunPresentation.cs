@@ -91,7 +91,7 @@ public sealed class GunPresentation : MonoBehaviour
         transform.localRotation = restRotation * Quaternion.Euler(-tilt, 0f, 0f);
     }
 
-    private void ResetPresentation()
+    public void ResetPresentation()
     {
         kick = tilt = 0f;
         flashUntil = tracerUntil = 0f;

@@ -5,6 +5,9 @@ public sealed class HitscanGun : Weapon
 {
     [SerializeField] private LayerMask hitLayers = Physics.DefaultRaycastLayers;
 
+    // Presentation-only notification. The shared weapon base stays independent of guns.
+    public event System.Action<Vector3> ShotFired;
+
     public override void PrimaryAttack(WeaponAttackContext context)
     {
         if (!TryBeginAttack())
@@ -37,5 +40,6 @@ public sealed class HitscanGun : Weapon
                 dealtDamage = target.TakeDamage(damage);
         }
         ReportAttack(dealtDamage);
+        ShotFired?.Invoke(foundSurface ? nearest.point : ray.GetPoint(range));
     }
 }

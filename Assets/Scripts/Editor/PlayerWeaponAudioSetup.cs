@@ -21,10 +21,11 @@ public static class PlayerWeaponAudioSetup
         PlayerWeaponAudio[] existing = player.GetComponentsInChildren<PlayerWeaponAudio>(true);
         if (existing.Length > 1)
             throw new InvalidOperationException("Keep one PlayerWeaponAudio before running setup.");
-        AudioClip pew = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/pew.wav");
+        AudioClip pew = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/pew2.wav");
+        AudioClip originalPew = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/pew.wav");
         AudioClip shing = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Shing.wav");
         if (pew == null || shing == null)
-            throw new InvalidOperationException("Import Assets/Audio/pew.wav and Shing.wav first.");
+            throw new InvalidOperationException("Import Assets/Audio/pew2.wav and Shing.wav first.");
         HitscanGun gun = player.GetComponentInChildren<HitscanGun>(true);
         SwordWeapon sword = player.GetComponentInChildren<SwordWeapon>(true);
         if (gun == null && sword == null)
@@ -50,8 +51,9 @@ public static class PlayerWeaponAudioSetup
         var serialized = new SerializedObject(audio);
         serialized.FindProperty("gun").objectReferenceValue = gun;
         serialized.FindProperty("sword").objectReferenceValue = sword;
-        // Preserve custom clips/volumes when running setup again.
-        if (serialized.FindProperty("gunClip").objectReferenceValue == null)
+        // Upgrade the original gun clip while preserving other custom clips/volumes.
+        if (serialized.FindProperty("gunClip").objectReferenceValue == null ||
+            serialized.FindProperty("gunClip").objectReferenceValue == originalPew)
             serialized.FindProperty("gunClip").objectReferenceValue = pew;
         if (serialized.FindProperty("swordClip").objectReferenceValue == null)
             serialized.FindProperty("swordClip").objectReferenceValue = shing;
@@ -60,6 +62,6 @@ public static class PlayerWeaponAudioSetup
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         Selection.activeGameObject = audio.gameObject;
-        Debug.Log("Player weapon audio saved: pew for accepted gunshots, Shing for accepted swing starts. Training bot is unchanged and silent.");
+        Debug.Log("Player weapon audio saved: pew2 for accepted gunshots, Shing for accepted swing starts. Training bot is unchanged and silent.");
     }
 }

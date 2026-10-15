@@ -24,6 +24,14 @@ public abstract class Weapon : MonoBehaviour
     public event Action<bool> AttackFeedback;
     private float nextAttackTime;
     private bool attacksBlocked;
+    public virtual WeaponAmmo Ammo => GetComponent<WeaponAmmo>();
+
+    // Future secondary abilities choose their own resource costs independently.
+    public virtual void Reload()
+    {
+        if (!attacksBlocked && isActiveAndEnabled)
+            Ammo?.BeginReload();
+    }
 
     public void SetAttacksBlocked(bool blocked)
     {
@@ -31,7 +39,11 @@ public abstract class Weapon : MonoBehaviour
         ResetAttackState();
     }
 
-    public virtual void ResetAttackState() => nextAttackTime = 0f;
+    public virtual void ResetAttackState()
+    {
+        nextAttackTime = 0f;
+        Ammo?.CancelReload();
+    }
 
     public abstract void PrimaryAttack(WeaponAttackContext context);
     public virtual void SecondaryAttack(WeaponAttackContext context) { }
@@ -39,6 +51,10 @@ public abstract class Weapon : MonoBehaviour
     protected bool TryBeginAttack()
     {
         if (attacksBlocked || !isActiveAndEnabled || Time.time < nextAttackTime)
+            return false;
+
+        WeaponAmmo ammo = Ammo;
+        if (ammo != null && !ammo.TryConsume())
             return false;
 
         nextAttackTime = Time.time + attackCooldown;

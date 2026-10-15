@@ -1,12 +1,14 @@
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[RequireComponent(typeof(WeaponAmmo))]
 public sealed class HitscanGun : Weapon
 {
     [SerializeField] private LayerMask hitLayers = Physics.DefaultRaycastLayers;
 
     // Presentation-only notification. The shared weapon base stays independent of guns.
     public event System.Action<Vector3> ShotFired;
+    private void OnDisable() => Ammo?.CancelReload();
 
     public override void PrimaryAttack(WeaponAttackContext context)
     {

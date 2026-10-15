@@ -15,6 +15,11 @@ The scene and material files are created/saved when you run the command; they ar
 
 ## Components and configuration
 
+Ammo support is now available: run **Tools > ClassFPS > Set Up Weapon Ammo HUD**
+to configure existing guns and display the counter. See `AMMO_TEST.md` for magazine
+tuning, R reload, automatic reload, and death/cursor checks. Gunfire consumes ammo;
+reload blocks attacks without triggering firing feedback or audio.
+
 - **FPSController** retains movement and cursor behavior and exposes whether gameplay input is allowed this frame. Keep its Main Camera assignment.
 - **PlayerCombatInput**, attached directly to Player, reads new Input System mouse buttons in LateUpdate, after movement/look Update. Assign its Equipped Weapon to a Weapon component. Left-click calls PrimaryAttack; right-click calls SecondaryAttack, which currently does nothing. Holding left-click fires again as soon as the gun cooldown permits. Right-click remains per press.
 - **Weapon** is the small shared base for future guns, melee weapons, projectiles, spells, or shields. Its attack context provides the owner and camera aim ray without prescribing hit detection. Its Inspector settings are Damage, Range, and Attack Cooldown. Defaults are 25 damage, 100 metres, and 0.2 seconds.

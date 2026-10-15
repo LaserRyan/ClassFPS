@@ -69,6 +69,30 @@ separate child GameObject.
 - `CombatCrosshair.cs` draws a centered crosshair with brief yellow firing feedback
   and red successful-damage feedback. No feedback is emitted for rejected cooldowns.
 
+### Weapon ammo and reload
+
+- `WeaponAmmo.cs` is an optional finite magazine component. HitscanGun requires it;
+  SwordWeapon explicitly exposes null Ammo for infinite melee. Inspector defaults:
+  12-round capacity, 1.5 s reload, automatic reload enabled. Reserve is unlimited.
+- Shared Weapon.TryBeginAttack spends one round only after cooldown/block checks.
+  Emptying the magazine starts automatic reload; primary attacks are rejected while
+  reloading. Holding fire resumes when reload and cooldown permit. R calls virtual
+  Weapon.Reload while captured/alive. Melee ignores R. SecondaryAttack/right-click
+  remains independent for future hero/weapon interactions; no ability added now.
+- Reload continues while cursor is released, uses scaled time, and is cancelled by
+  gun/ammo disable or death/reset. Respawn refills magazines. No reload audio or
+  animation, reserve pickups, inventory, or networking added.
+- `WeaponAmmoHUD.cs` draws a bottom-right current/capacity counter or infinity for
+  melee, plus reload status. It follows EquippedWeaponChanged and Ammo.Changed;
+  health HUD/crosshair are preserved. No per-frame ammo polling.
+- **Tools > ClassFPS > Set Up Weapon Ammo HUD** adds/reuses player gun resources and
+  one HUD, preserving tuning and saving through Editor APIs. Run this in Unity to
+  configure existing scene guns; the agent has not executed setup or edited YAML.
+- `AMMO_TEST.md` covers setup, manual/automatic reload, holds, disable/death/respawn,
+  infinity, audio, and cursor checks. Runtime compilation in Editor/development/
+  release configurations and separate Editor compilation passed. Unity gameplay
+  and HUD rendering remain unverified by the agent.
+
 ### Player health and HUD
 
 - `PlayerHealth.cs` implements `IDamageable` on Player. Inspector Maximum Health
@@ -140,7 +164,7 @@ separate child GameObject.
 ### Player weapon test audio
 
 - `PlayerWeaponAudio.cs` is a separate player-only audio subscriber. Accepted
-  HitscanGun.ShotFired plays `Assets/Audio/pew.wav`; accepted SwordWeapon.SwingStarted
+  HitscanGun.ShotFired plays `Assets/Audio/pew2.wav`; accepted SwordWeapon.SwingStarted
   plays `Assets/Audio/Shing.wav` once at swing start, including windup. Damage/hit
   feedback does not trigger sound. Rejected attacks/recapture clicks stay silent.
 - **Tools > ClassFPS > Set Up Player Weapon Audio** adds/reuses a Player child with

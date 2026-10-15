@@ -78,7 +78,7 @@ Restart Play mode to bring back the saved bot; no in-game bot respawn was added.
 ### Optional player weapon test audio
 
 Stop Play mode and choose **Tools > ClassFPS > Set Up Player Weapon Audio**.
-It assigns `Assets/Audio/pew.wav` to accepted player gunshots and
+It assigns `Assets/Audio/pew2.wav` to accepted player gunshots and
 `Assets/Audio/Shing.wav` to accepted sword swing starts. Audio is non-spatial;
 training bot/projectiles stay silent. The player audio child stays separate from
 the weapon visuals. Tune clips and per-weapon volumes on Player Weapon Audio.

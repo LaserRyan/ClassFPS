@@ -1,5 +1,8 @@
 # Sword prototype
 
+The shared ammo HUD can be added using **Tools > ClassFPS > Set Up Weapon Ammo HUD**.
+Sword always displays infinity, consumes no ammo, and ignores R. See `AMMO_TEST.md`.
+
 Open `Assets/MovementTest.unity`, stop Play mode, allow scripts to import, then choose
 **Tools > ClassFPS > Set Up Sword Test**. The command saves the scene, equips the
 sword through the existing PlayerCombatInput, disables the player's HitscanGun

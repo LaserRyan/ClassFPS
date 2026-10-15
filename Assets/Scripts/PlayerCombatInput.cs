@@ -8,11 +8,18 @@ public sealed class PlayerCombatInput : MonoBehaviour
     [SerializeField] private Weapon equippedWeapon;
     private FPSController movement;
     private bool primaryRequiresRelease;
+    public event System.Action<Weapon> EquippedWeaponChanged;
 
     public Weapon EquippedWeapon
     {
         get => equippedWeapon;
-        set => equippedWeapon = value;
+        set
+        {
+            if (equippedWeapon == value)
+                return;
+            equippedWeapon = value;
+            EquippedWeaponChanged?.Invoke(value);
+        }
     }
 
     private void Awake() => movement = GetComponent<FPSController>();
@@ -37,6 +44,9 @@ public sealed class PlayerCombatInput : MonoBehaviour
         Ray centerRay = aimCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         var context = new WeaponAttackContext(transform,
             new Ray(aimCamera.transform.position, centerRay.direction));
+
+        if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+            equippedWeapon.Reload();
 
         if (!mouse.leftButton.isPressed)
             primaryRequiresRelease = false;

@@ -19,6 +19,7 @@ public sealed class SwordWeapon : Weapon
     private float startedAt;
     private float previousElapsed;
     public event System.Action SwingStarted;
+    public override WeaponAmmo Ammo => null; // Melee never consumes or reloads ammo.
     public bool IsSwinging { get; private set; }
     public float Windup => Mathf.Max(0f, windup);
     public float ActiveDuration => Mathf.Max(0.01f, activeDuration);

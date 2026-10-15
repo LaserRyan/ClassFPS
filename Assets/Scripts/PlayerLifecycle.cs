@@ -76,7 +76,11 @@ public sealed class PlayerLifecycle : MonoBehaviour
     {
         foreach (Weapon weapon in weapons)
             if (weapon != null)
+            {
                 weapon.SetAttacksBlocked(blocked);
+                if (!blocked)
+                    weapon.Ammo?.Refill();
+            }
         foreach (GunPresentation view in GetComponentsInChildren<GunPresentation>(true))
             view.ResetPresentation();
         foreach (SwordPresentation view in GetComponentsInChildren<SwordPresentation>(true))

@@ -732,6 +732,7 @@ GameObject:
   m_Component:
   - component: {fileID: 266911349}
   - component: {fileID: 266911348}
+  - component: {fileID: 266911350}
   m_Layer: 0
   m_Name: Hitscan Gun
   m_TagString: Untagged
@@ -746,7 +747,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 266911347}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5ef424b79e6344b6be76aa770681ee41, type: 3}
   m_Name: 
@@ -772,6 +773,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 985593087}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &266911350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 266911347}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c3c40e8ac5a4314952c8fa0a2f68929, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAmmo
+  magazineCapacity: 12
+  reloadDuration: 1.5
+  automaticReload: 1
 --- !u!1 &278901352
 GameObject:
   m_ObjectHideFlags: 0
@@ -1320,6 +1336,53 @@ Transform:
   - {fileID: 1574355975}
   m_Father: {fileID: 2126792513}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &390698066
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 390698067}
+  - component: {fileID: 390698068}
+  m_Layer: 0
+  m_Name: Weapon Ammo HUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &390698067
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 390698066}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 985593087}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &390698068
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 390698066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 74df8b8ebc8c4468b43d1403dde1f97e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAmmoHUD
+  combat: {fileID: 985593090}
+  screenMargin: {x: 24, y: 24}
+  panelSize: {x: 220, y: 60}
 --- !u!1 &398495899
 GameObject:
   m_ObjectHideFlags: 0
@@ -1496,7 +1559,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &417614754
 Transform:
   m_ObjectHideFlags: 0
@@ -2104,6 +2167,7 @@ Transform:
   - {fileID: 17937042}
   - {fileID: 1636079909}
   - {fileID: 1305475147}
+  - {fileID: 390698067}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &985593088
@@ -2149,7 +2213,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4786156d67a4a3aa6805a7b636546a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCombatInput
-  equippedWeapon: {fileID: 985593091}
+  equippedWeapon: {fileID: 266911348}
 --- !u!114 &985593091
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2157,7 +2221,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 985593085}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1dde9bd60e1a45f88d0983d6b801a563, type: 3}
   m_Name: 
@@ -3512,7 +3576,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2126792513
 Transform:
   m_ObjectHideFlags: 0

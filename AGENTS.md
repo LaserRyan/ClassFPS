@@ -113,6 +113,46 @@ separate child GameObject.
   asset-generation validator, Play mode, rendering/audio/physics or game build was
   executed by the agent. Run hero setup in Unity to generate/save the actual assets.
 
+### Fire Spell Prototype
+
+- `FireSpellWeapon.cs` is the third selectable primary, backed by FireSpellDefinition.
+  The existing hero setup adds stable ID `prototype.fire`, class Caster Prototype,
+  default 110 health / 5.25 speed / 1.2 jump / -20 gravity. Secondary/passive stay null.
+- Fire tuning asset under `Assets/Definitions/Weapons/FireSpellPrototype.asset`:
+  35 damage, 80 m maximum camera aim distance (Range), 0.35 s cast delay, 0.6 s
+  cooldown measured **after projectile release**, 12 m/s, 0.2 m radius, 4 s lifetime.
+  Progress/cooldowns and launched projectile values remain instance state only.
+- Held primary repeats after windup plus post-release cooldown, with no overlapping
+  or queued casts. Releasing primary allows an accepted cast to finish; death,
+  disable/removal, cursor release/focus loss or blocked gameplay cancels windup.
+  Existing release-after-death/recapture protections remain. Fire has infinite ammo.
+- Release samples the current camera aim ray, then fires from the offset origin
+  toward the nearest surface/max aim point. A swept-radius camera-to-origin check
+  consumes blocked shots at a safe contact rather than spawning beyond nearby cover.
+- StraightProjectile now delegates its existing start-overlap/nearest-sweep query to
+  ProjectileCollision and exposes launch/impact events plus an optional radius
+  override. The bot's five-argument Launch uses its original serialized radius and
+  remains straight-firing. Owner checks tolerate destroyed casters; launched shots
+  outlive death/removal. Each projectile damages one receiver once via IDamageable.
+- FireballPresentation sizes its body/trail to collision radius and spawns a brief
+  FireImpactPresentation on impact; temporary objects expire. FireSpellPresentation
+  handles charge and optional cast/release audio; impact audio is optional on the
+  impact prefab. All clips start null, 2D/non-spatial. No gun/sword sound assigned.
+- Re-run **Set Up Prototype Hero Selection** to create/reuse fire hero/weapon assets,
+  FireSpellPrototypeKit/Fireball/FireImpact prefabs under `Assets/Prefabs/Heroes`,
+  and two fire materials. Existing prototype tuning/prefabs and scene objects remain.
+  Hero UI scrolls if needed for three entries; lifecycle cancels/resets/hides fire
+  presentation during death and retains the selected kit through respawn.
+- `FIRE_SPELL_TEST.md` covers setup, cast timing, holds/releases, aim/close walls,
+  bot/child hitboxes, expiry, cancellation, optional audio and repeated respawn.
+  User has run setup; the saved scene now references the fire hero and its generated
+  definition/material/prefab assets are present. Cast/release/impact clips remain
+  unassigned. A separate looping travel sound is feasible but not implemented yet.
+  Agent checks: Runtime compilation in Editor/development/release configurations,
+  separate Editor compilation, source/docs whitespace. Unity setup/Play mode,
+  physics/rendering/audio and game build tests remain for the user. No splash,
+  burn, homing, secondary/passive mechanics, networking or friendly-fire rules added.
+
 ### Weapon ammo and reload
 
 - `WeaponAmmo.cs` is an optional finite magazine component. HitscanGun requires it;

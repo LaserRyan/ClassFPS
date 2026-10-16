@@ -67,7 +67,10 @@ public static class HeroPrototypeSetup
             maximum, speed, jump, gravity, gunKit);
         HeroDefinition swordHero = Hero("SwordPrototype", "prototype.sword", "Sword Prototype", "Melee Prototype",
             maximum + 50f, speed + 1f, jump + 0.4f, gravity, swordKit);
-        Validate(gunHero, swordHero);
+        HeroKit fireKit = FireSpellPrototypeSetup.CreateKit();
+        HeroDefinition fireHero = Hero("FireSpellPrototype", "prototype.fire", "Fire Spell Prototype", "Caster Prototype",
+            110f, 5.25f, 1.2f, -20f, fireKit);
+        Validate(gunHero, swordHero, fireHero);
 
         Undo.IncrementCurrentGroup();
         int group = Undo.GetCurrentGroup();
@@ -78,6 +81,8 @@ public static class HeroPrototypeSetup
         foreach (GunPresentation view in player.GetComponentsInChildren<GunPresentation>(true))
             Undo.DestroyObjectImmediate(view.gameObject);
         foreach (SwordPresentation view in player.GetComponentsInChildren<SwordPresentation>(true))
+            Undo.DestroyObjectImmediate(view.gameObject);
+        foreach (FireSpellPresentation view in player.GetComponentsInChildren<FireSpellPresentation>(true))
             Undo.DestroyObjectImmediate(view.gameObject);
         foreach (PlayerWeaponAudio sound in player.GetComponentsInChildren<PlayerWeaponAudio>(true))
         {
@@ -103,9 +108,10 @@ public static class HeroPrototypeSetup
         selection.enabled = true;
         var data = new SerializedObject(selection);
         SerializedProperty heroes = data.FindProperty("heroes");
-        heroes.arraySize = 2;
+        heroes.arraySize = 3;
         heroes.GetArrayElementAtIndex(0).objectReferenceValue = gunHero;
         heroes.GetArrayElementAtIndex(1).objectReferenceValue = swordHero;
+        heroes.GetArrayElementAtIndex(2).objectReferenceValue = fireHero;
         data.ApplyModifiedProperties();
         Undo.CollapseUndoOperations(group);
         AssetDatabase.SaveAssets();
@@ -152,9 +158,10 @@ public static class HeroPrototypeSetup
     {
         HeroDefinition gun = AssetDatabase.LoadAssetAtPath<HeroDefinition>(HeroFolder + "/GunPrototype.asset");
         HeroDefinition sword = AssetDatabase.LoadAssetAtPath<HeroDefinition>(HeroFolder + "/SwordPrototype.asset");
-        if (gun == null || sword == null)
+        HeroDefinition fire = AssetDatabase.LoadAssetAtPath<HeroDefinition>(HeroFolder + "/FireSpellPrototype.asset");
+        if (gun == null || sword == null || fire == null)
             throw new InvalidOperationException("Run Set Up Prototype Hero Selection first.");
-        Validate(gun, sword);
+        Validate(gun, sword, fire);
         Debug.Log("Prototype hero assets passed ID and kit/definition validation. This is not a gameplay test.");
     }
 

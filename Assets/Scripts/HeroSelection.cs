@@ -13,6 +13,7 @@ public sealed class HeroSelection : MonoBehaviour
     private PlayerHealth health;
     private PlayerLifecycle lifecycle;
     private string error;
+    private Vector2 selectionScroll;
     public HeroDefinition SelectedHero { get; private set; }
     public HeroKit SelectedKit { get; private set; }
 
@@ -72,6 +73,10 @@ public sealed class HeroSelection : MonoBehaviour
                 message = "Prototype weapon needs its matching gun/sword definition.";
             else if (weapon is HitscanGun && (weapon.Ammo == null || !weapon.Ammo.enabled))
                 message = "Gun kit needs enabled WeaponAmmo.";
+            else if (weapon is FireSpellWeapon fire &&
+                (fire.Spell == null || fire.Spell.ProjectilePrefab == null ||
+                 !fire.Spell.ProjectilePrefab.enabled || !fire.Spell.ProjectilePrefab.gameObject.activeSelf))
+                message = "Fire spell needs its definition and projectile prefab.";
         }
         return message == null;
     }
@@ -81,10 +86,12 @@ public sealed class HeroSelection : MonoBehaviour
         if (SelectedHero != null)
             return;
         float width = Mathf.Min(480f, Screen.width - 20f);
+        float height = Mathf.Min(Screen.height - 20f, 150f + (heroes != null ? heroes.Length : 0) * 80f);
         GUILayout.BeginArea(new Rect((Screen.width - width) * 0.5f,
-            Mathf.Max(10f, Screen.height * 0.5f - 180f), width, 360f), GUI.skin.box);
+            Mathf.Max(10f, (Screen.height - height) * 0.5f), width, height), GUI.skin.box);
         GUILayout.Label("Select a prototype hero");
         GUILayout.Label("One fixed weapon per hero. Restart Play mode to choose again.");
+        selectionScroll = GUILayout.BeginScrollView(selectionScroll);
         if (heroes != null)
             foreach (HeroDefinition hero in heroes)
             {
@@ -96,6 +103,7 @@ public sealed class HeroSelection : MonoBehaviour
                 if (GUILayout.Button(label, GUILayout.Height(80f)))
                     SelectHero(hero);
             }
+        GUILayout.EndScrollView();
         if (!string.IsNullOrEmpty(error))
             GUILayout.Label(error);
         GUILayout.EndArea();

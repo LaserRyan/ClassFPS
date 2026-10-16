@@ -1619,6 +1619,7 @@ MonoBehaviour:
   heroes:
   - {fileID: 11400000, guid: 7de0301f51c4f7e4bac32554d1a27a21, type: 2}
   - {fileID: 11400000, guid: 078f080f8bbe4df4290becc1acae6fbb, type: 2}
+  - {fileID: 11400000, guid: 79a84a3c23ab2634581ebfd042c05b68, type: 2}
 --- !u!1 &1243479965
 GameObject:
   m_ObjectHideFlags: 0

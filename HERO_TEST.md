@@ -2,18 +2,22 @@
 
 ## Setup
 
+The selector now includes **Fire Spell Prototype** as its third entry. Re-run hero
+setup to add its assets/kit without resetting Gun or Sword. See `FIRE_SPELL_TEST.md`
+for cast rules, configuration and collision/cancellation checks.
+
 1. Stop Play mode, open `Assets/MovementTest.unity`, wait for script import.
 2. Choose **Tools > ClassFPS > Set Up Prototype Hero Selection**. Existing health,
    HUDs, lifecycle/spawnpoint, bot, obstacles and targets remain on the shared scene.
    If missing, run the existing health/training setup first.
-3. Setup creates two HeroDefinitions, two weapon definitions and two kit prefabs.
+3. Setup creates three HeroDefinitions, three weapon definitions and three kit prefabs.
    On first creation, existing gun/sword values, visuals and audio are migrated.
    It then removes scene-only gun/sword behaviors, visuals and weapon audio, and
    adds HeroSelection. No unselected weapon instances remain in the scene.
 4. Run setup again: assets, tuning and prefab edits are preserved, not recreated.
    Choose **Tools > ClassFPS > Validate Prototype Hero Assets** to check IDs and
    kit/definition references. Setup also validates before converting the scene.
-5. Enter Play mode. Click **Gun Prototype** or **Sword Prototype**, then click the
+5. Enter Play mode. Choose Gun, Sword, or Fire Spell Prototype, then click the
    Game view to capture the cursor. Release that capture click before attacking.
    Selection occurs once per Play session. Stop/restart Play to choose the other.
 
@@ -28,8 +32,10 @@ between separate Play sessions, and no in-game weapon/hero switching is provided
 | --- | --- |
 | `Assets/Definitions/Heroes/GunPrototype.asset` | Stable ID, name, class, health, movement speed, jump, gravity, kit, optional avatar/icon |
 | `Assets/Definitions/Heroes/SwordPrototype.asset` | Same hero settings |
+| `Assets/Definitions/Heroes/FireSpellPrototype.asset` | Fire hero health, movement, kit and optional references |
 | `Assets/Definitions/Weapons/GunPrototype.asset` | Damage, range, cooldown, magazine capacity, reload duration, automatic reload |
 | `Assets/Definitions/Weapons/SwordPrototype.asset` | Damage, reach, cooldown, attack arc, windup, active duration, recovery |
+| `Assets/Definitions/Weapons/FireSpellPrototype.asset` | Damage, aim distance, cast delay, post-release cooldown, speed, radius, lifetime, projectile |
 | `Assets/Prefabs/Heroes/GunPrototypeKit.prefab` | Gun visuals, recoil/effects, clips/volume; one fixed HitscanGun |
 | `Assets/Prefabs/Heroes/SwordPrototypeKit.prefab` | Sword model, animation poses, clips/volume; one fixed SwordWeapon |
 

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55c9ba6937d04bbfa6a7d324c5eafad9, type: 3}
+  m_Name: FireSpellPrototype
+  m_EditorClassIdentifier: Assembly-CSharp::FireSpellDefinition
+  damage: 35
+  range: 80
+  cooldown: 0.6
+  castDelay: 0.35
+  projectileSpeed: 12
+  collisionRadius: 0.2
+  projectileLifetime: 4
+  projectilePrefab: {fileID: 1102910846406567747, guid: fe4532e4b600ee74094d4a36313d187a, type: 3}

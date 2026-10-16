@@ -52,6 +52,8 @@ public sealed class PlayerLifecycle : MonoBehaviour
             HidePresentation(view.gameObject);
         foreach (SwordPresentation view in GetComponentsInChildren<SwordPresentation>(true))
             HidePresentation(view.gameObject);
+        foreach (FireSpellPresentation view in GetComponentsInChildren<FireSpellPresentation>(true))
+            HidePresentation(view.gameObject);
     }
 
     private void Update()
@@ -89,6 +91,8 @@ public sealed class PlayerLifecycle : MonoBehaviour
         foreach (GunPresentation view in GetComponentsInChildren<GunPresentation>(true))
             view.ResetPresentation();
         foreach (SwordPresentation view in GetComponentsInChildren<SwordPresentation>(true))
+            view.ResetPresentation();
+        foreach (FireSpellPresentation view in GetComponentsInChildren<FireSpellPresentation>(true))
             view.ResetPresentation();
     }
 

@@ -52,6 +52,7 @@ public abstract class Weapon : MonoBehaviour
 
     public abstract void PrimaryAttack(WeaponAttackContext context);
     public virtual void SecondaryAttack(WeaponAttackContext context) { }
+    protected void RestartCooldown() => nextAttackTime = Time.time + Cooldown;
 
     protected bool TryBeginAttack()
     {

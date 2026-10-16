@@ -75,8 +75,9 @@ public sealed class HeroSelection : MonoBehaviour
                 message = "Gun kit needs enabled WeaponAmmo.";
             else if (weapon is FireSpellWeapon fire &&
                 (fire.Spell == null || fire.Spell.ProjectilePrefab == null ||
+                 fire.Energy == null || !fire.Energy.enabled ||
                  !fire.Spell.ProjectilePrefab.enabled || !fire.Spell.ProjectilePrefab.gameObject.activeSelf))
-                message = "Fire spell needs its definition and projectile prefab.";
+                message = "Fire kit needs its definition, projectile, and enabled FireEnergy. Re-run hero setup.";
         }
         return message == null;
     }

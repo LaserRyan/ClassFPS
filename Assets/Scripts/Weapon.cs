@@ -30,6 +30,10 @@ public abstract class Weapon : MonoBehaviour
     private float nextAttackTime;
     private bool attacksBlocked;
     public virtual WeaponAmmo Ammo => GetComponent<WeaponAmmo>();
+    protected bool CanUseWeapon => !attacksBlocked && isActiveAndEnabled;
+    public virtual bool UsesHeldSecondary => false;
+    public virtual void ObserveAttackButtons(bool primaryHeld, bool secondaryHeld) { }
+    public virtual void RestoreResources() => Ammo?.Refill();
 
     // Future secondary abilities choose their own resource costs independently.
     public virtual void Reload()

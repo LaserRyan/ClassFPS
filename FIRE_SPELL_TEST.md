@@ -2,6 +2,10 @@
 
 ## Setup and values
 
+Shared heat-based ammo and MB2 flamethrower are now implemented. Re-run the same
+hero setup to upgrade the existing kit (adds FireEnergy and one flame presentation
+line, preserves clips/tuning). See `HEAT_AMMO_TEST.md` for resource and overheat tests.
+
 Stop Play mode, open `Assets/MovementTest.unity`, allow scripts to import, and run
 **Tools > ClassFPS > Set Up Prototype Hero Selection** again. It extends the existing
 selection with Fire Spell Prototype and creates/reuses its assets/prefabs. Existing
@@ -25,8 +29,9 @@ Use **Validate Prototype Hero Assets** afterward. Secondary/passive slots stay n
   existing player test audio. No new audio files are required or auto-assigned.
 
 Weapon assets are read-only to runtime code; cast state/timestamps are on the weapon
-instance, projectile lifetime/size/damage on each launched instance. Ammo is unlimited
-(infinity HUD); R has no effect. Right-click/secondary/passive behavior is not added.
+instance, projectile lifetime/size/damage on each launched instance. Fireball and held
+MB2 flame share finite regenerating ammo; R has no effect. Passive and optional
+behavior-prefab slots remain unassigned; the flame is implemented on FireSpellWeapon.
 
 ## Cast rules
 
@@ -49,18 +54,19 @@ is consumed immediately at the safe first contact and produces an impact there.
 Thereafter sphere sweeps and start-overlap checks hit the nearest blocking surface,
 ignore caster hierarchy/triggers, and apply IDamageable damage only once via parent
 lookup. Lifetime bounds travel independently of aim distance (default max travel
-about 48 m). No homing, splash, burn, teams or friendly-fire rules are implemented.
+about 48 m). No homing, splash, teams or friendly-fire rules are implemented.
+Configurable lingering burn is documented in BURN_TEST.md.
 The impact pulse is visual only and does not imply splash damage.
 
 ## Gameplay checklist (Unity required)
 
 1. Enter Play, choose Fire Spell Prototype. Capture/release the initial click, then
-   attack. Verify fire hero health/stats, infinity ammo, one selected kit/weapon, and
+   attack. Verify fire hero health/stats, shared 100/100 ammo, one selected kit/weapon, and
    no gun/sword components (including inactive). All three choices should fit or scroll.
 2. Single click: charge during windup, then one fireball and yellow release feedback.
    Set cast delay to 1 second before Play to make timing obvious; no projectile or
    damage should occur immediately. Release the button during windup: cast still fires.
-3. Hold primary: no overlapping charges; repeated releases respect windup plus
+3. Hold primary until resource exhaustion: no overlapping charges; repeated releases respect windup plus
    post-release cooldown. Release during cooldown: no extra cast. Rapid taps during
    cooldown/windup do not queue more projectiles. Test zero cast delay as well.
 4. Aim at targets at different distances and off-center camera angles. The fireball

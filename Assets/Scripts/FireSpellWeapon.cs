@@ -2,6 +2,7 @@
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[RequireComponent(typeof(FireEnergy))]
 public sealed class FireSpellWeapon : Weapon
 {
     [SerializeField] private Transform castOrigin;
@@ -10,6 +11,14 @@ public sealed class FireSpellWeapon : Weapon
     private Ray acceptedAim;
     private float releaseAt;
     private float castStarted;
+    private float reservedCost;
+    private bool flameOwnsAttack;
+    private int primaryActivityFrame = -1;
+    public FireEnergy Energy => GetComponent<FireEnergy>();
+    public override bool UsesHeldSecondary => true;
+    public bool IsFlamethrowing { get; private set; }
+    public Vector3 FlameStart { get; private set; }
+    public Vector3 FlameEnd { get; private set; }
     public override WeaponAmmo Ammo => null;
     public FireSpellDefinition Spell => Definition as FireSpellDefinition;
     public bool IsCasting { get; private set; }
@@ -22,15 +31,24 @@ public sealed class FireSpellWeapon : Weapon
     public override void PrimaryAttack(WeaponAttackContext context)
     {
         FPSController controller = context.Owner != null ? context.Owner.GetComponent<FPSController>() : null;
-        if (IsCasting || Spell == null || Spell.ProjectilePrefab == null || context.Owner == null ||
+        if (IsCasting || flameOwnsAttack || Spell == null || Spell.ProjectilePrefab == null || context.Owner == null ||
+            Energy == null || !Energy.isActiveAndEnabled ||
+            !Energy.State.CanSpend(Spell.FireballCost, Time.time) ||
             (controller != null && !controller.CanAcceptGameplayInput) || !TryBeginAttack())
             return;
+        reservedCost = Spell.FireballCost;
+        if (!Energy.State.TrySpend(reservedCost, Time.time))
+        {
+            reservedCost = 0f;
+            return;
+        }
         owner = context.Owner;
         movement = controller;
         acceptedAim = context.AimRay;
         castStarted = Time.time;
         releaseAt = castStarted + Spell.CastDelay;
         IsCasting = true;
+        primaryActivityFrame = Time.frameCount;
         CastStarted?.Invoke();
         if (Spell.CastDelay <= 0f && IsCasting)
             Release();
@@ -82,9 +100,12 @@ public sealed class FireSpellWeapon : Weapon
             direction = aim.direction;
         StraightProjectile shot = Instantiate(config.ProjectilePrefab, origin, Quaternion.LookRotation(direction));
         shot.Impacted += OnProjectileImpact;
-        shot.Launch(owner, direction, config.ProjectileSpeed, Damage, config.ProjectileLifetime, config.CollisionRadius);
+        shot.Launch(owner, direction, config.ProjectileSpeed, Damage, config.ProjectileLifetime,
+            config.CollisionRadius, config.BurnPercent, config.BurnDuration);
+        reservedCost = 0f; // Committed at release; launched shots never refund their cost.
         IsCasting = false;
         // Cooldown starts at release, including immediately blocked shots.
+        primaryActivityFrame = Time.frameCount;
         RestartCooldown();
         ReportAttack(false);
         ProjectileReleased?.Invoke();
@@ -104,10 +125,66 @@ public sealed class FireSpellWeapon : Weapon
         base.ResetAttackState();
         bool cancelled = IsCasting;
         IsCasting = false;
+        IsFlamethrowing = false;
+        flameOwnsAttack = false;
+        float refund = reservedCost;
+        reservedCost = 0f; // Clear before notifying observers; repeated resets cannot refund twice.
+        if (refund > 0f && Energy != null)
+            Energy.State.Refund(refund, Time.time);
         owner = null;
         movement = null;
         if (cancelled)
             CastCancelled?.Invoke();
+    }
+
+    public override void ObserveAttackButtons(bool primaryHeld, bool secondaryHeld)
+    {
+        // Keep ownership across input frames, even though presentation is refreshed below.
+        if (!secondaryHeld)
+            flameOwnsAttack = false;
+        IsFlamethrowing = false;
+        if (Energy != null)
+            Energy.State.ObserveButtons(primaryHeld, secondaryHeld, Time.time);
+    }
+
+    public override void SecondaryAttack(WeaponAttackContext context)
+    {
+        FPSController controller = context.Owner != null ? context.Owner.GetComponent<FPSController>() : null;
+        if (IsCasting || primaryActivityFrame == Time.frameCount ||
+            !CanUseWeapon || Spell == null || context.Owner == null || Energy == null ||
+            !Energy.isActiveAndEnabled || (controller != null && !controller.CanAcceptGameplayInput))
+            return;
+        float fundedSeconds = Energy.State.SpendFiringTime(Spell.FlamethrowerConsumption, Time.deltaTime, Time.time);
+        if (fundedSeconds <= 0f)
+            return;
+        // Exhaustion can enter overheat here; the final funded fraction still deals damage.
+        Vector3 origin = castOrigin != null ? castOrigin.position : context.AimRay.origin;
+        bool hit = ProjectileCollision.TryHit(context.AimRay.origin, origin, Spell.FlameRadius,
+            context.Owner, Physics.DefaultRaycastLayers, out Collider surface, out Vector3 center);
+        FlameStart = hit ? center : origin;
+        Vector3 direction = context.AimRay.GetPoint(Spell.FlameReach) - origin;
+        if (direction.sqrMagnitude < 0.000001f)
+            direction = context.AimRay.direction;
+        Vector3 end = origin + direction.normalized * Spell.FlameReach;
+        if (!hit)
+            hit = ProjectileCollision.TryHit(origin, end, Spell.FlameRadius, context.Owner,
+                Physics.DefaultRaycastLayers, out surface, out center);
+        FlameEnd = hit ? center : end;
+        IsFlamethrowing = !Energy.State.IsOverheated;
+        flameOwnsAttack = IsFlamethrowing;
+        IDamageable receiver = hit ? surface.GetComponentInParent<IDamageable>() : null;
+        if (receiver?.TakeDamage(Spell.FlameDamagePerSecond * fundedSeconds) ?? false)
+        {
+            BurnStatus.Apply(receiver, Spell.FlameDamagePerSecond, Spell.BurnPercent, Spell.BurnDuration);
+            ReportAttack(true);
+        }
+    }
+
+    public override void RestoreResources()
+    {
+        base.RestoreResources();
+        if (Energy != null)
+            Energy.ResetFull();
     }
     private void OnDisable() => ResetAttackState();
 }

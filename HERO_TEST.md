@@ -5,6 +5,8 @@
 The selector now includes **Fire Spell Prototype** as its third entry. Re-run hero
 setup to add its assets/kit without resetting Gun or Sword. See `FIRE_SPELL_TEST.md`
 for cast rules, configuration and collision/cancellation checks.
+Fire now uses shared regenerating heat ammo for MB1 fireball and held MB2 flame;
+see `HEAT_AMMO_TEST.md`. Gun magazine and sword infinity behavior are unchanged.
 
 1. Stop Play mode, open `Assets/MovementTest.unity`, wait for script import.
 2. Choose **Tools > ClassFPS > Set Up Prototype Hero Selection**. Existing health,

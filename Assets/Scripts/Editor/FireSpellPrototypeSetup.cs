@@ -30,9 +30,14 @@ public static class FireSpellPrototypeSetup
             AssetDatabase.CreateAsset(definition, definitionPath);
         }
         string path = Folder + "FireSpellPrototypeKit.prefab";
+        // Persist newly introduced definition fields without overwriting existing tuning.
+        EditorUtility.SetDirty(definition);
         GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
         if (existing != null)
-            return existing.GetComponent<HeroKit>();
+        {
+            UpgradeSharedEnergy(path, fire);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<HeroKit>();
+        }
         var root = new GameObject("Fire Spell Prototype Kit");
         try
         {
@@ -48,6 +53,7 @@ public static class FireSpellPrototypeSetup
             var presentationData = new SerializedObject(presentation);
             presentationData.FindProperty("weapon").objectReferenceValue = weapon;
             presentationData.FindProperty("chargeVisual").objectReferenceValue = charge.transform;
+            presentationData.FindProperty("flameLine").objectReferenceValue = CreateFlameLine(view.transform, fire);
             presentationData.ApplyModifiedPropertiesWithoutUndo();
             var weaponData = new SerializedObject(weapon);
             weaponData.FindProperty("definition").objectReferenceValue = definition;
@@ -60,6 +66,51 @@ public static class FireSpellPrototypeSetup
             return PrefabUtility.SaveAsPrefabAsset(root, path).GetComponent<HeroKit>();
         }
         finally { UnityEngine.Object.DestroyImmediate(root); }
+    }
+
+    private static void UpgradeSharedEnergy(string path, Material material)
+    {
+        GameObject root = PrefabUtility.LoadPrefabContents(path);
+        try
+        {
+            FireSpellWeapon weapon = root.GetComponentInChildren<FireSpellWeapon>(true);
+            if (weapon == null)
+                throw new InvalidOperationException("Fire kit needs FireSpellWeapon.");
+            if (weapon.GetComponent<FireEnergy>() == null)
+                weapon.gameObject.AddComponent<FireEnergy>();
+            FireSpellPresentation view = root.GetComponentInChildren<FireSpellPresentation>(true);
+            if (view != null)
+            {
+                var data = new SerializedObject(view);
+                if (data.FindProperty("flameLine").objectReferenceValue == null)
+                {
+                    data.FindProperty("flameLine").objectReferenceValue = CreateFlameLine(view.transform, material);
+                    data.ApplyModifiedPropertiesWithoutUndo();
+                }
+            }
+            PrefabUtility.SaveAsPrefabAsset(root, path);
+        }
+        finally { PrefabUtility.UnloadPrefabContents(root); }
+    }
+
+    private static LineRenderer CreateFlameLine(Transform parent, Material material)
+    {
+        Transform existing = parent.Find("Flame Stream");
+        GameObject stream = existing != null ? existing.gameObject : new GameObject("Flame Stream");
+        stream.transform.SetParent(parent, false);
+        stream.layer = LayerMask.NameToLayer("Ignore Raycast");
+        LineRenderer line = stream.GetComponent<LineRenderer>();
+        if (line == null)
+            line = stream.AddComponent<LineRenderer>();
+        line.sharedMaterial = material;
+        line.useWorldSpace = true;
+        line.positionCount = 2;
+        line.startWidth = 0.7f;
+        line.endWidth = 0.35f;
+        line.shadowCastingMode = ShadowCastingMode.Off;
+        line.receiveShadows = false;
+        line.enabled = false;
+        return line;
     }
 
     private static FireImpactPresentation ImpactPrefab(Material material)

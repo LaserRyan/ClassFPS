@@ -125,7 +125,8 @@ separate child GameObject.
 - Held primary repeats after windup plus post-release cooldown, with no overlapping
   or queued casts. Releasing primary allows an accepted cast to finish; death,
   disable/removal, cursor release/focus loss or blocked gameplay cancels windup.
-  Existing release-after-death/recapture protections remain. Fire has infinite ammo.
+  Existing release-after-death/recapture protections remain. Fire now uses the shared
+  heat-based ammo pool described below rather than infinite ammo.
 - Release samples the current camera aim ray, then fires from the offset origin
   toward the nearest surface/max aim point. A swept-radius camera-to-origin check
   consumes blocked shots at a safe contact rather than spawning beyond nearby cover.
@@ -152,6 +153,46 @@ separate child GameObject.
   separate Editor compilation, source/docs whitespace. Unity setup/Play mode,
   physics/rendering/audio and game build tests remain for the user. No splash,
   burn, homing, secondary/passive mechanics, networking or friendly-fire rules added.
+
+### Shared fire energy / overheat
+
+- `FireEnergy.cs` owns one per-kit `HeatAmmoState` used by both FireSpellWeapon
+  actions. No separate flamethrower fuel component/display existed in this checkout;
+  this milestone adds the minimal continuous MB2 flame against the same resource.
+- FireSpellDefinition holds provisional maximum 100, fireball cost 25, flame drain
+  30/s, regeneration delay 2 s, regeneration rate 25/s, overheat duration 3 s.
+  Flame tuning is 30 damage/s, 5 m reach, 0.35 m swept radius. All editable in the
+  existing fire definition; instantiated pool configuration is a per-session snapshot.
+- MB1 reserves its cost on acceptance; insufficient ammo rejects before cast effects.
+  Cancellation before release refunds the reserved amount once, capped at maximum.
+  Release commits the reservation. Spending the last ammo starts heat but never
+  cancels the accepted cast. Existing cooldown still starts at projectile release.
+- MB2 is held input, continuous first-blocking-surface volume damage. Drain returns
+  funded seconds, so the final partial frame deals only DPS times funded time before
+  exhaustion stops flame. Attacks are mutually exclusive: a paid cast blocks flame,
+  and held active flame blocks casts until MB2 is released. Simultaneous fresh input
+  gives MB1 priority. No splash or separate fuel pool is added. Configurable burn
+  is described in the later fire prototype burn section.
+- Consumption restarts normal regeneration delay; afterward regeneration is incremental.
+  Zero triggers one overheat deadline. During heat, regenerate immediately while both
+  new attacks stay locked; defaults restore 75 energy in 3 seconds. At expiry both
+  buttons must be observed released before either resumes. Refunds preserve an
+  already-started heat timer; they do not erase/restart it. Rejected attempts do not
+  extend heat or delay regeneration. Resource/cooldown clocks use scaled game time.
+- Shared input observes button state and supports opt-in held secondary behavior;
+  gun/sword secondary behavior is unchanged. Cursor/death/focus fresh-press gates
+  cover both buttons. Lifecycle RestoreResources refills heat ammo and clears heat
+  and its release latch on respawn, while preserving normal input release protections.
+- Ammo HUD subscribes to resource changes: shared current/max, red OVERHEATED with
+  countdown, then Release MB1 + MB2 when needed. No separate fuel display. Fire
+  presentation reuses one line for flame and resets it on release/death/disable.
+- Re-run **Set Up Prototype Hero Selection** to upgrade an existing fire prefab,
+  persist new definition fields, and add one resource/line without duplicates. Existing
+  assets, sounds and other heroes are preserved. Unity scene YAML was not edited.
+- `HEAT_AMMO_TEST.md` has exact setup and gameplay checks. Automated checks: 44
+  deterministic resource-state assertions via `Tests/RunHeatAmmoChecks.ps1`; Runtime
+  and Editor compilation. Native Unity cast/physics/UI/input/audio and setup repeat
+  checks remain manual. See final verification record in the test guide.
 
 ### Weapon ammo and reload
 
@@ -404,3 +445,16 @@ git config --global --add safe.directory C:/Users/vitic/ClassFPS/ClassFPS
 
 Do not overwrite the existing repository/remote or force-push. This handoff document
 has not been committed or pushed automatically.
+
+### Fire prototype burn
+
+- FireSpellDefinition now exposes Burn Percent (default 20) and Burn Duration
+  (default 3 seconds). Percent means additional damage per second relative to
+  fireball base damage or flame base DPS, not target maximum health. Zero disables.
+- BurnStatus lives on the IDamageable receiver, so child colliders share one burn.
+  Accepted fire hits refresh duration without stacking; the stronger active rate
+  wins. Burn outlives the caster. Disabled targets clear it; player full restoration
+  (including respawn) clears it. Bot projectiles default to no burn.
+- No burn visuals/audio added. See BURN_TEST.md for pending Unity gameplay checks.
+
+- Deferred presentation (lower priority): outwardly visible burn indicators on affected actors and a burn status indicator on the player's health bar when hit. Neither is implemented yet.

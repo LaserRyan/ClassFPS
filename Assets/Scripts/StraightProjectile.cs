@@ -15,17 +15,22 @@ public sealed class StraightProjectile : MonoBehaviour
     private float radius;
     private bool launched;
     private bool consumed;
+    private float burnPercent;
+    private float burnDuration;
     public event Action<float> Launched;
     public event Action<Vector3, bool> Impacted;
 
     // Existing bot calls retain their serialized radius; spell launches can override per instance.
     public void Launch(Transform firingOwner, Vector3 forward, float projectileSpeed,
-        float projectileDamage, float lifetime, float radiusOverride = 0f)
+        float projectileDamage, float lifetime, float radiusOverride = 0f,
+        float impactBurnPercent = 0f, float impactBurnDuration = 0f)
     {
         owner = firingOwner;
         direction = forward.normalized;
         speed = Mathf.Max(0f, projectileSpeed);
         damage = Mathf.Max(0f, projectileDamage);
+        burnPercent = Mathf.Max(0f, impactBurnPercent);
+        burnDuration = Mathf.Max(0f, impactBurnDuration);
         remainingLife = Mathf.Max(0f, lifetime);
         radius = Mathf.Max(0.01f, radiusOverride > 0f ? radiusOverride : collisionRadius);
         consumed = false;
@@ -69,8 +74,10 @@ public sealed class StraightProjectile : MonoBehaviour
         if (consumed)
             return;
         consumed = true;
-        bool dealtDamage = collider != null &&
-            (collider.GetComponentInParent<IDamageable>()?.TakeDamage(damage) ?? false);
+        IDamageable receiver = collider != null ? collider.GetComponentInParent<IDamageable>() : null;
+        bool dealtDamage = receiver?.TakeDamage(damage) ?? false;
+        if (dealtDamage)
+            BurnStatus.Apply(receiver, damage, burnPercent, burnDuration);
         if (collider != null)
             Impacted?.Invoke(transform.position, dealtDamage);
         gameObject.SetActive(false);

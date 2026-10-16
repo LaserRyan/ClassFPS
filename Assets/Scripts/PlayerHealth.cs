@@ -36,6 +36,7 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
     public bool RestoreFullHealth()
     {
         Initialize();
+        GetComponent<BurnStatus>()?.Clear();
         return isActiveAndEnabled && SetCurrent(MaximumHealth);
     }
 

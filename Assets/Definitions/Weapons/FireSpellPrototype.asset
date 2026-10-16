@@ -20,3 +20,12 @@ MonoBehaviour:
   collisionRadius: 0.2
   projectileLifetime: 4
   projectilePrefab: {fileID: 1102910846406567747, guid: fe4532e4b600ee74094d4a36313d187a, type: 3}
+  maximumEnergy: 100
+  fireballCost: 25
+  flamethrowerConsumption: 30
+  regenerationDelay: 2
+  regenerationRate: 25
+  overheatDuration: 3
+  flameDamagePerSecond: 30
+  flameReach: 5
+  flameRadius: 0.35

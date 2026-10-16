@@ -8,6 +8,7 @@ public sealed class PlayerCombatInput : MonoBehaviour
     [SerializeField] private Weapon equippedWeapon;
     private FPSController movement;
     private bool primaryRequiresRelease;
+    private bool secondaryRequiresRelease;
     public event System.Action<Weapon> EquippedWeaponChanged;
 
     public Weapon EquippedWeapon
@@ -23,14 +24,23 @@ public sealed class PlayerCombatInput : MonoBehaviour
     }
 
     private void Awake() => movement = GetComponent<FPSController>();
-    private void OnDisable() => primaryRequiresRelease = true;
-    public void RequirePrimaryRelease() => primaryRequiresRelease = true;
+    private void OnDisable()
+    {
+        primaryRequiresRelease = secondaryRequiresRelease = true;
+        if (equippedWeapon != null)
+            equippedWeapon.ObserveAttackButtons(Mouse.current != null && Mouse.current.leftButton.isPressed,
+                Mouse.current != null && Mouse.current.rightButton.isPressed);
+    }
+    public void RequirePrimaryRelease() => primaryRequiresRelease = secondaryRequiresRelease = true;
 
     private void LateUpdate()
     {
         // All Update calls (including look and cursor capture) finish before this.
         // The movement controller excludes the click that recaptures the cursor.
         Mouse mouse = Mouse.current;
+        if (equippedWeapon != null)
+            equippedWeapon.ObserveAttackButtons(mouse != null && mouse.leftButton.isPressed,
+                mouse != null && mouse.rightButton.isPressed);
         if (!movement.CanAcceptGameplayInput || mouse == null ||
             equippedWeapon == null || !equippedWeapon.isActiveAndEnabled ||
             movement.PlayerCamera == null)
@@ -38,6 +48,7 @@ public sealed class PlayerCombatInput : MonoBehaviour
             // Holding the capture click (or holding through death/focus loss)
             // must not become an attack when gameplay resumes.
             primaryRequiresRelease = mouse != null && mouse.leftButton.isPressed;
+            secondaryRequiresRelease = mouse != null && mouse.rightButton.isPressed;
             return;
         }
 
@@ -53,7 +64,10 @@ public sealed class PlayerCombatInput : MonoBehaviour
             primaryRequiresRelease = false;
         else if (!primaryRequiresRelease)
             equippedWeapon.PrimaryAttack(context);
-        if (mouse.rightButton.wasPressedThisFrame)
+        if (!mouse.rightButton.isPressed)
+            secondaryRequiresRelease = false;
+        else if (!secondaryRequiresRelease &&
+            (equippedWeapon.UsesHeldSecondary || mouse.rightButton.wasPressedThisFrame))
             equippedWeapon.SecondaryAttack(context);
     }
 }

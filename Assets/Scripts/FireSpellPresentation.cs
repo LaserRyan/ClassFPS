@@ -1,11 +1,13 @@
 ﻿using UnityEngine;
 
 [RequireComponent(typeof(AudioSource))]
+[DefaultExecutionOrder(100)]
 [DisallowMultipleComponent]
 public sealed class FireSpellPresentation : MonoBehaviour
 {
     [SerializeField] private FireSpellWeapon weapon;
     [SerializeField] private Transform chargeVisual;
+    [SerializeField] private LineRenderer flameLine;
     [SerializeField] private AudioClip castClip;
     [SerializeField] private AudioClip releaseClip;
     [SerializeField, Range(0f, 1f)] private float volume = 0.7f;
@@ -49,12 +51,25 @@ public sealed class FireSpellPresentation : MonoBehaviour
     }
     private void LateUpdate()
     {
+        if (flameLine != null)
+        {
+            flameLine.enabled = weapon != null && weapon.IsFlamethrowing;
+            if (flameLine.enabled)
+            {
+                flameLine.startWidth = weapon.Spell.FlameRadius * 2f;
+                flameLine.endWidth = weapon.Spell.FlameRadius;
+                flameLine.SetPosition(0, weapon.FlameStart);
+                flameLine.SetPosition(1, weapon.FlameEnd);
+            }
+        }
         if (weapon == null || !weapon.IsCasting || chargeVisual == null)
             return;
         chargeVisual.localScale = Vector3.one * Mathf.Lerp(0.05f, 0.25f, weapon.CastProgress);
     }
     public void ResetPresentation()
     {
+        if (flameLine != null)
+            flameLine.enabled = false;
         if (chargeVisual != null)
             chargeVisual.gameObject.SetActive(false);
         if (source != null)

@@ -19,6 +19,7 @@ public static class SwordTestSetup
         if (players.Length != 1)
             throw new InvalidOperationException("Open MovementTest with exactly one PlayerCombatInput.");
         PlayerCombatInput input = players[0];
+        HeroPrototypeSetup.RequireLegacyMode(input.gameObject);
         Camera camera = input.GetComponent<FPSController>().PlayerCamera;
         Shader shader = Shader.Find("Universal Render Pipeline/Lit");
         if (camera == null || shader == null)

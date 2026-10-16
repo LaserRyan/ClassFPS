@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [DisallowMultipleComponent]
 public sealed class WeaponAmmoHUD : MonoBehaviour
@@ -48,9 +48,9 @@ public sealed class WeaponAmmoHUD : MonoBehaviour
 
     private void Refresh()
     {
-        text = observedAmmo == null ? "Ammo: 8" :
+        text = observedAmmo == null ? "Ammo: \u221E" :
             $"Ammo: {observedAmmo.CurrentAmmo} / {observedAmmo.Capacity}\n" +
-            (observedAmmo.IsReloading ? "Reloading�" : "R: Reload");
+            (observedAmmo.IsReloading ? "Reloading…" : "R: Reload");
     }
 
     private void OnGUI()

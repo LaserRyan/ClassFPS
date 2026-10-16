@@ -24,6 +24,7 @@ public sealed class PlayerCombatInput : MonoBehaviour
 
     private void Awake() => movement = GetComponent<FPSController>();
     private void OnDisable() => primaryRequiresRelease = true;
+    public void RequirePrimaryRelease() => primaryRequiresRelease = true;
 
     private void LateUpdate()
     {

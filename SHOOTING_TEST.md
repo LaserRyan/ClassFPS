@@ -15,6 +15,10 @@ The scene and material files are created/saved when you run the command; they ar
 
 ## Components and configuration
 
+With HeroSelection configured, use `HERO_TEST.md` and edit hero/weapon assets instead.
+Legacy weapon setup commands reject hero mode; **Tools > ClassFPS > Use Legacy Gun
+Test** deliberately restores the old test flow without deleting definition assets.
+
 Ammo support is now available: run **Tools > ClassFPS > Set Up Weapon Ammo HUD**
 to configure existing guns and display the counter. See `AMMO_TEST.md` for magazine
 tuning, R reload, automatic reload, and death/cursor checks. Gunfire consumes ammo;

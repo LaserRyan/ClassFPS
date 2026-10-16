@@ -20,6 +20,7 @@ public static class ShootingTestSetup
         Transform[] objects = scene.GetRootGameObjects()
             .SelectMany(root => root.GetComponentsInChildren<Transform>(true)).ToArray();
         GameObject player = Find(objects, "Player");
+        HeroPrototypeSetup.RequireLegacyMode(player);
         FPSController movement = player.GetComponent<FPSController>();
         if (movement == null || player.GetComponent<CharacterController>() == null ||
             player.GetComponentInChildren<Camera>() == null)

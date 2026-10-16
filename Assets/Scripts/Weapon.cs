@@ -16,9 +16,14 @@ public readonly struct WeaponAttackContext
 
 public abstract class Weapon : MonoBehaviour
 {
+    [SerializeField] private WeaponDefinition definition;
     [SerializeField, Min(0f)] protected float damage = 25f;
     [SerializeField, Min(0.01f)] protected float range = 100f;
     [SerializeField, Min(0f)] protected float attackCooldown = 0.2f;
+    public WeaponDefinition Definition => definition;
+    public float Damage => definition != null ? definition.Damage : damage;
+    public float Range => definition != null ? definition.Range : range;
+    public float Cooldown => definition != null ? definition.Cooldown : attackCooldown;
 
     // True means an attack actually dealt damage, rather than just hitting scenery.
     public event Action<bool> AttackFeedback;
@@ -57,7 +62,7 @@ public abstract class Weapon : MonoBehaviour
         if (ammo != null && !ammo.TryConsume())
             return false;
 
-        nextAttackTime = Time.time + attackCooldown;
+        nextAttackTime = Time.time + Cooldown;
         return true;
     }
 

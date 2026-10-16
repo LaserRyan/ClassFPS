@@ -1,5 +1,9 @@
 # Sword prototype
 
+If HeroSelection is configured, select Sword Prototype and edit its definition/kit
+assets instead (`HERO_TEST.md`). Sword Test setup rejects hero mode; deliberately
+leave it through **Tools > ClassFPS > Use Legacy Gun Test** before legacy testing.
+
 The shared ammo HUD can be added using **Tools > ClassFPS > Set Up Weapon Ammo HUD**.
 Sword always displays infinity, consumes no ammo, and ignores R. See `AMMO_TEST.md`.
 

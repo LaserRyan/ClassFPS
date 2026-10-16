@@ -21,6 +21,7 @@ public static class GunPresentationSetup
             throw new InvalidOperationException("Open the shooting scene with exactly one PlayerCombatInput.");
 
         PlayerCombatInput input = players[0];
+        HeroPrototypeSetup.RequireLegacyMode(input.gameObject);
         HitscanGun gun = input.EquippedWeapon as HitscanGun;
         FPSController controller = input.GetComponent<FPSController>();
         Camera camera = controller != null ? controller.PlayerCamera : null;

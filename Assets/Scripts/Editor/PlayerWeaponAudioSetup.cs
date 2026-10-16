@@ -18,6 +18,7 @@ public static class PlayerWeaponAudioSetup
         if (players.Length != 1)
             throw new InvalidOperationException("Open the test scene with exactly one PlayerCombatInput.");
         PlayerCombatInput player = players[0];
+        HeroPrototypeSetup.RequireLegacyMode(player.gameObject);
         PlayerWeaponAudio[] existing = player.GetComponentsInChildren<PlayerWeaponAudio>(true);
         if (existing.Length > 1)
             throw new InvalidOperationException("Keep one PlayerWeaponAudio before running setup.");

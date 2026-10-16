@@ -21,10 +21,11 @@ public sealed class FPSController : MonoBehaviour
     private bool cursorCaptureRequested;
     private int gameplayInputFrame = -1;
     private bool gameplayBlocked;
+    private bool selectingHero;
     private int suppressGameplayThroughFrame = -1;
 
     public Camera PlayerCamera => playerCamera;
-    public bool CanAcceptGameplayInput => isActiveAndEnabled && !gameplayBlocked &&
+    public bool CanAcceptGameplayInput => isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
         Time.frameCount > suppressGameplayThroughFrame &&
         gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
         Application.isFocused && Cursor.lockState == CursorLockMode.Locked &&
@@ -74,7 +75,7 @@ public sealed class FPSController : MonoBehaviour
         {
             SetCursorCaptured(false);
         }
-        else if ((!cursorCaptureRequested || Cursor.lockState != CursorLockMode.Locked) &&
+        else if (!selectingHero && (!cursorCaptureRequested || Cursor.lockState != CursorLockMode.Locked) &&
                  Application.isFocused && mouse != null &&
                  mouse.leftButton.wasPressedThisFrame)
         {
@@ -86,11 +87,11 @@ public sealed class FPSController : MonoBehaviour
         ApplyCursorState();
         bool acceptInput = cursorCaptureRequested && Application.isFocused &&
             Cursor.lockState == CursorLockMode.Locked && !capturedThisFrame && !gameplayBlocked &&
-            Time.frameCount > suppressGameplayThroughFrame;
+            Time.frameCount > suppressGameplayThroughFrame && !selectingHero;
         gameplayInputFrame = acceptInput ? Time.frameCount : -1;
 
         // Keep cursor/Escape processing alive while dead, without movement or gravity.
-        if (gameplayBlocked)
+        if (gameplayBlocked || selectingHero)
             return;
 
         if (acceptInput && mouse != null)
@@ -143,6 +144,21 @@ public sealed class FPSController : MonoBehaviour
         gameplayInputFrame = -1;
     }
 
+    public void SetHeroSelection(bool selecting)
+    {
+        selectingHero = selecting;
+        SetCursorCaptured(false);
+        gameplayInputFrame = -1;
+        suppressGameplayThroughFrame = Time.frameCount;
+    }
+
+    public void ConfigureMovement(float speed, float jump, float downwardGravity)
+    {
+        movementSpeed = Mathf.Max(0f, speed);
+        jumpHeight = Mathf.Max(0f, jump);
+        gravity = Mathf.Min(-0.01f, downwardGravity);
+    }
+
     public void ResetAtSpawn(Vector3 position, Quaternion facing)
     {
         if (controller == null)
@@ -175,7 +191,7 @@ public sealed class FPSController : MonoBehaviour
 
     private void ApplyCursorState()
     {
-        bool captured = cursorCaptureRequested && isActiveAndEnabled && Application.isFocused;
+        bool captured = cursorCaptureRequested && isActiveAndEnabled && Application.isFocused && !selectingHero;
         Cursor.lockState = captured ? CursorLockMode.Locked : CursorLockMode.None;
         Cursor.visible = !captured;
     }

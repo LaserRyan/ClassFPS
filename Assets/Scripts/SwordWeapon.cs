@@ -21,9 +21,11 @@ public sealed class SwordWeapon : Weapon
     public event System.Action SwingStarted;
     public override WeaponAmmo Ammo => null; // Melee never consumes or reloads ammo.
     public bool IsSwinging { get; private set; }
-    public float Windup => Mathf.Max(0f, windup);
-    public float ActiveDuration => Mathf.Max(0.01f, activeDuration);
-    public float Recovery => Mathf.Max(0f, recovery);
+    private SwordWeaponDefinition SwordDefinition => Definition as SwordWeaponDefinition;
+    public float AttackArc => SwordDefinition != null ? SwordDefinition.AttackArc : Mathf.Clamp(attackArc, 1f, 180f);
+    public float Windup => SwordDefinition != null ? SwordDefinition.Windup : Mathf.Max(0f, windup);
+    public float ActiveDuration => SwordDefinition != null ? SwordDefinition.ActiveDuration : Mathf.Max(0.01f, activeDuration);
+    public float Recovery => SwordDefinition != null ? SwordDefinition.Recovery : Mathf.Max(0f, recovery);
     public float SwingElapsed => IsSwinging ? Mathf.Max(0f, Time.time - startedAt) : 0f;
 
     private void Reset()
@@ -77,7 +79,7 @@ public sealed class SwordWeapon : Weapon
 
     private void DetectDamage(Ray aim)
     {
-        float reach = Mathf.Max(0.01f, range);
+        float reach = Mathf.Max(0.01f, Range);
         // A spherical sector is a volume, so off-center and child colliders can be struck.
         Collider[] candidates = Physics.OverlapSphere(aim.origin, reach,
             Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
@@ -93,13 +95,13 @@ public sealed class SwordWeapon : Weapon
             Vector3 offset = point - aim.origin;
             if (offset.sqrMagnitude > reach * reach)
                 continue;
-            if (Vector3.Angle(aim.direction, offset) > Mathf.Clamp(attackArc, 1f, 180f) * 0.5f)
+            if (Vector3.Angle(aim.direction, offset) > AttackArc * 0.5f)
                 continue;
             if (IsBlocked(aim.origin, offset, target, candidates))
                 continue;
             // Record before callbacks, including a target with several child colliders.
             damaged.Add(target);
-            if (target.TakeDamage(damage))
+            if (target.TakeDamage(Damage))
                 ReportAttack(true);
             if (!IsSwinging || !isActiveAndEnabled)
                 return;

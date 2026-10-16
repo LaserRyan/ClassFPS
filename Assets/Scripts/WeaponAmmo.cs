@@ -11,7 +11,10 @@ public sealed class WeaponAmmo : MonoBehaviour
     private int currentAmmo;
     private bool initialized;
     private float reloadAt;
-    public int Capacity => Mathf.Max(1, magazineCapacity);
+    public GunWeaponDefinition Definition => GetComponent<Weapon>()?.Definition as GunWeaponDefinition;
+    public int Capacity => Definition != null ? Definition.MagazineCapacity : Mathf.Max(1, magazineCapacity);
+    public float ReloadDuration => Definition != null ? Definition.ReloadDuration : Mathf.Max(0.01f, reloadDuration);
+    public bool AutomaticReload => Definition != null ? Definition.AutomaticReload : automaticReload;
     public int CurrentAmmo { get { Initialize(); return currentAmmo; } }
     public bool IsReloading { get; private set; }
     public event Action Changed;
@@ -32,13 +35,13 @@ public sealed class WeaponAmmo : MonoBehaviour
             return false;
         if (currentAmmo <= 0)
         {
-            if (automaticReload)
+            if (AutomaticReload)
                 BeginReload();
             return false;
         }
         currentAmmo--;
         Changed?.Invoke();
-        if (currentAmmo == 0 && automaticReload)
+        if (currentAmmo == 0 && AutomaticReload)
             BeginReload();
         return true;
     }
@@ -49,7 +52,7 @@ public sealed class WeaponAmmo : MonoBehaviour
         if (!isActiveAndEnabled || IsReloading || currentAmmo >= Capacity)
             return false;
         IsReloading = true;
-        reloadAt = Time.time + Mathf.Max(0.01f, reloadDuration);
+        reloadAt = Time.time + ReloadDuration;
         Changed?.Invoke();
         return true;
     }

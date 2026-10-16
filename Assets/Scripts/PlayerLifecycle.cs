@@ -21,7 +21,7 @@ public sealed class PlayerLifecycle : MonoBehaviour
     {
         health = GetComponent<PlayerHealth>();
         movement = GetComponent<FPSController>();
-        weapons = GetComponentsInChildren<Weapon>(true);
+        RefreshWeapons();
         initialPosition = transform.position;
         initialFacing = transform.rotation;
     }
@@ -58,8 +58,7 @@ public sealed class PlayerLifecycle : MonoBehaviour
     {
         if (!IsDead || Time.time < respawnAt)
             return;
-        movement.ResetAtSpawn(spawnpoint != null ? spawnpoint.position : initialPosition,
-            spawnpoint != null ? spawnpoint.rotation : initialFacing);
+        PlaceAtSpawn();
         // State remains blocked throughout repositioning and health notification.
         health.RestoreFullHealth();
         ResetWeapons(false);
@@ -71,6 +70,12 @@ public sealed class PlayerLifecycle : MonoBehaviour
         health.DamageBlocked = false;
         movement.SetGameplayBlocked(false);
     }
+
+    public void RefreshWeapons() => weapons = GetComponentsInChildren<Weapon>(true);
+
+    public void PlaceAtSpawn() => movement.ResetAtSpawn(
+        spawnpoint != null ? spawnpoint.position : initialPosition,
+        spawnpoint != null ? spawnpoint.rotation : initialFacing);
 
     private void ResetWeapons(bool blocked)
     {

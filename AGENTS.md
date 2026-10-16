@@ -21,12 +21,14 @@ ProjectSettings; keep generated Unity folders excluded through .gitignore.
 
 ## Recorded design decision
 
-**Each hero has one unique weapon and a passive. No weapon switching is planned.**
+**Each hero has one fixed primary weapon, one secondary action, and one passive.
+No gameplay weapon switching is planned.**
 
 The shared weapon abstraction supports differences between heroes, not a weapon
 inventory or switching system. Preserve support for guns, melee weapons/swords,
-spells, and shields without assuming every attack uses hitscan. Heroes and passives
-are a future design direction; they are not implemented yet. Do not add weapon
+spells, and shields without assuming every attack uses hitscan. Prototype hero
+selection/configuration now exists; secondary abilities and passives remain future
+work. Do not add weapon
 switching, ammo, reloads, multiplayer, or hero systems without a new task requesting
 them.
 
@@ -68,6 +70,48 @@ separate child GameObject.
   resets health. Four accepted default shots defeat a target.
 - `CombatCrosshair.cs` draws a centered crosshair with brief yellow firing feedback
   and red successful-damage feedback. No feedback is emitted for rejected cooldowns.
+
+### Configurable prototype heroes
+
+- `HeroDefinition.cs` stores stable ID, display/class labels, maximum health, speed,
+  jump height, gravity, fixed HeroKit prefab, optional avatar/icon, and reserved
+  secondary/passive prefab slots. Prototype future slots are null and not executed.
+- `WeaponDefinition.cs` plus GunWeaponDefinition/SwordWeaponDefinition own common
+  tuning and type-specific magazine/reload or swing phase/arc settings. Weapon's
+  effective Damage/Range/Cooldown and sword/ammo getters read the assigned asset.
+  Legacy component tuning is a fallback only when no definition is assigned; custom
+  Inspectors hide ignored fallback fields. No gameplay writes to shared assets.
+- `HeroSelection.cs` adds an OnGUI selection before gameplay. While selecting,
+  cursor stays released, movement/look/combat and player damage are blocked. After
+  choosing, exactly one HeroKit is instantiated under the existing camera, shared
+  health/movement are configured, and Player is placed at its existing spawnpoint.
+  Optional avatar is presentation under Player; missing model/icon/audio is safe.
+- Selection locks for the Play session. Death/respawn keeps the same hero/kit and
+  refreshes/reset its instance state, rather than rebuilding or switching heroes.
+  Lifecycle.RefreshWeapons supports the spawned kit. The selection/capture click
+  cannot attack; normal hold-to-attack and release-after-death rules remain.
+- **Tools > ClassFPS > Set Up Prototype Hero Selection** generates/reuses two hero
+  assets in `Assets/Definitions/Heroes`, two tuning assets in
+  `Assets/Definitions/Weapons`, and kit prefabs in `Assets/Prefabs/Heroes`. Initial
+  values/presentation/audio migrate from legacy scene weapons before their removal.
+  The gun hero copies current player stats; sword adds 50 health, 1 speed and 0.4
+  jump height. IDs `prototype.gun` / `prototype.sword` remain stable across reruns.
+- Setup preserves existing asset edits, bot, spawnpoint, HUDs, obstacles and targets.
+  It does not leave disabled alternative weapons on Player. Validate Prototype Hero
+  Assets checks stable unique IDs and kit/definition consistency inside Unity.
+- Legacy Shooting/Sword/Gun Presentation/Player Weapon Audio setup commands reject
+  hero mode explicitly. Use **Tools > ClassFPS > Use Legacy Gun Test** to deliberately
+  remove selection and reconstruct legacy tests. Hero definitions/kits are retained.
+- `HERO_TEST.md` documents asset configuration and both-selection gameplay checks.
+  User has run hero setup: saved hero definitions, kit prefabs and the converted
+  scene are now present. Follow-up fixes use a Unicode escape for the infinity HUD
+  label and automatically migrate original pew references to pew2 via Editor APIs.
+  Saved kit clip GUIDs were inspected and verified as pew2. Audible playback and
+  full gameplay regression testing were not performed by the agent.
+  Agent verification: standalone runtime compilation (Editor/development/release),
+  separate Editor compilation, and source/doc whitespace checks. No Unity setup,
+  asset-generation validator, Play mode, rendering/audio/physics or game build was
+  executed by the agent. Run hero setup in Unity to generate/save the actual assets.
 
 ### Weapon ammo and reload
 

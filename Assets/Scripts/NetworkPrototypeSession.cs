@@ -35,6 +35,9 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     public float SpawnYaw => spawnYaw;
     public NetworkPrototypePlayer LocalPlayer { get; set; }
     public void ReportStatus(string status) => message = status;
+    private bool NetworkActive => manager.IsListening || connecting || manager.ShutdownInProgress;
+    public Rect ConnectionPanelRect => new Rect(15f, 15f, 360f,
+        offline ? 90f : NetworkActive ? 130f : Mathf.Min(470f, Screen.height - 30f));
 
     private void Awake()
     {
@@ -52,6 +55,13 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     private void Start()
     {
         foreach (var pair in botStates) if (pair.Key != null) pair.Key.enabled = false;
+    }
+    private void Update()
+    {
+        // Runs before FPSController.Update: GUI clicks must not become capture clicks.
+        if (LocalPlayer != null) LocalPlayer.GetComponent<FPSController>().CursorCaptureExclusion = ConnectionPanelRect;
+        if (offline && offlinePlayer != null)
+            offlinePlayer.GetComponent<FPSController>().CursorCaptureExclusion = ConnectionPanelRect;
     }
     private void OnEnable()
     {
@@ -131,6 +141,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     }
     private void Stopped(bool wasHost)
     {
+        if (message == "Disconnecting...") message = "Disconnected.";
         connecting = false;
         approved.Clear();
         slots.Clear();
@@ -163,6 +174,12 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     }
     public void StartHost() => StartNetwork(true);
     public void Join() => StartNetwork(false);
+    public void Disconnect()
+    {
+        if (manager.ShutdownInProgress) return;
+        message = "Disconnecting...";
+        manager.Shutdown();
+    }
     private void StartOffline()
     {
         offline = true;
@@ -182,9 +199,8 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     }
     private void OnGUI()
     {
-        bool networkActive = manager.IsListening || connecting || manager.ShutdownInProgress;
-        float height = offline ? 90f : networkActive ? 130f : Mathf.Min(470f, Screen.height - 30f);
-        GUILayout.BeginArea(new Rect(15f, 15f, 360f, height), GUI.skin.box);
+        bool networkActive = NetworkActive;
+        GUILayout.BeginArea(ConnectionPanelRect, GUI.skin.box);
         if (offline)
         {
             GUILayout.Label("Offline test (Escape releases cursor)");
@@ -194,7 +210,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
         {
             GUILayout.Label("Local multiplayer prototype — movement only");
             GUILayout.Label("Escape: cursor | F6: development hero test (if enabled)");
-            if (GUILayout.Button("Disconnect / Cancel")) manager.Shutdown();
+            if (GUILayout.Button("Disconnect / Cancel")) Disconnect();
         }
         else
         {

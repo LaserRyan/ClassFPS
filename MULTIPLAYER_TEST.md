@@ -81,6 +81,8 @@ in the connection lobby/network session and resumed only for the offline test.
    **127.0.0.1**, and click **Join**. You should now have two players at distinct slots.
    Click the Game view/window to capture the cursor. WASD/jump/look affect only that
    instance's owned actor. Escape releases the cursor for connection controls.
+   Click inside the 3D view outside the connection panel to recapture; clicks on the
+   panel are reserved for its buttons and cannot recapture the cursor.
 6. Turn toward the other spawn to see the other hero. Switch focus between windows
    and move/look in each. Runtime run-in-background is enabled for this test scene;
    focus loss still releases capture and suppresses input. The host must stay running.
@@ -182,3 +184,21 @@ No standalone game build, second connected instance, native remote interpolation
 interactive keyboard/mouse/UI, graphical visibility, audio listening or full gameplay
 regression was executed. The headless host checks do not replace the manual connection,
 release-host wire rejection and offline checklist above.
+
+### Disconnect button follow-up
+
+The user reports connection and development hero changes working, but Disconnect did
+not respond. FPSController was recapturing any left-click after Escape before OnGUI
+could handle the button. The connection panel now provides a capture exclusion rect
+before movement Update, for network and embedded offline play. Other Game-view clicks
+still capture normally. The UI and native lifecycle checks share Session.Disconnect.
+The expanded native host check has **24 assertions**, including inside/outside panel
+capture policy, button-handler shutdown, cleanup and reconnect. Runtime compilation in
+Editor/development/release and separate Editor compilation passed again.
+
+Retest: stop Play mode, let scripts import, **rebuild the standalone executable**, then
+host/join again. Press Escape and click Disconnect on the client; its actor should
+disappear from the host and the client should show the connection menu. Rejoin, then
+disconnect the host and verify both return to their menus. Also click the world outside
+the panel to verify normal recapture. Actual mouse-driven button clicks in both windows
+remain a manual check; native assertions test the capture predicate and handler path.

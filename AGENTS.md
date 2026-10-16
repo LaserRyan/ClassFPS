@@ -605,3 +605,17 @@ This section supersedes the earlier prohibition on networking for this milestone
   authority limits and asset locations. New scene/network assets were generated with
   Editor APIs in an isolated copy; original local asset tuning/generated hero art and
   unrelated root file were preserved and excluded from this feature commit.
+
+### Disconnect UI follow-up
+
+- User reports connection and F6 hero changes working; Disconnect clicks failed.
+  The FPS recapture check consumed released-cursor button clicks before OnGUI.
+- FPSController now has an optional top-left GUI capture-exclusion rect (empty by
+  default offline). NetworkPrototypeSession sets it before movement Update from the
+  exact connection panel rect, for owned network and embedded offline players. Panel
+  clicks stay released; world clicks preserve capture-frame/fresh-input protections.
+- Disconnect button and native checks call Session.Disconnect. Expanded isolated
+  native host checks: 24 assertions including capture policy, shutdown/cleanup/reconnect.
+  Runtime Editor/development/release and separate Editor compilation passed.
+  Actual two-window mouse/UI retesting remains manual; rebuild the exe to include fixes.
+  No scene/assets/settings were edited; current local user changes remain unstaged.

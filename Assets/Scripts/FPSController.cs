@@ -27,6 +27,10 @@ public sealed class FPSController : MonoBehaviour
 
     public Camera PlayerCamera => playerCamera;
     public GunslingerDash Dash { get; set; }
+    // Top-left GUI coordinates. Default empty rect preserves ordinary offline capture.
+    public Rect CursorCaptureExclusion { get; set; }
+    public bool CanCaptureCursorAt(Vector2 screenPosition) =>
+        !CursorCaptureExclusion.Contains(new Vector2(screenPosition.x, Screen.height - screenPosition.y));
     public bool CanAcceptGameplayInput => ownsLocalInput && isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
         Time.frameCount > suppressGameplayThroughFrame &&
         gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
@@ -81,7 +85,7 @@ public sealed class FPSController : MonoBehaviour
         }
         else if (!selectingHero && (!cursorCaptureRequested || Cursor.lockState != CursorLockMode.Locked) &&
                  Application.isFocused && mouse != null &&
-                 mouse.leftButton.wasPressedThisFrame)
+                 mouse.leftButton.wasPressedThisFrame && CanCaptureCursorAt(mouse.position.ReadValue()))
         {
             SetCursorCaptured(true);
             // Ignore the capture frame's delta to prevent a sudden camera turn.

@@ -69,6 +69,10 @@ public static class NetworkPrototypeBatchChecks
                 NetworkPrototypePlayer player = session.LocalPlayer;
                 Check(manager.ConnectedClients.Count == 1, "One connected host expected.");
                 Check(player.IsOwner && player.GetComponent<FPSController>().enabled, "Host owns movement.");
+                FPSController movement = player.GetComponent<FPSController>();
+                movement.CursorCaptureExclusion = session.ConnectionPanelRect;
+                Check(!movement.CanCaptureCursorAt(new Vector2(60f, Screen.height - 80f)), "Disconnect-panel clicks cannot recapture the cursor.");
+                Check(movement.CanCaptureCursorAt(new Vector2(400f, Screen.height - 80f)), "Clicks outside the panel can recapture normally.");
                 Check(UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Count(c => c.enabled) == 1, "Exactly one active gameplay camera.");
                 Check(UnityEngine.Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Count(c => c.enabled) == 1, "Exactly one active listener.");
                 Check(!player.GetComponent<PlayerCombatInput>().enabled && !player.GetComponent<PlayerLifecycle>().enabled &&
@@ -120,7 +124,7 @@ public static class NetworkPrototypeBatchChecks
                 Check(session.LocalPlayer.CurrentHeroId == expectedHero, "Repeated change applies third hero.");
                 Check(session.LocalPlayer.GetComponentsInChildren<HeroKit>(true).Length == 1 &&
                     session.LocalPlayer.GetComponentsInChildren<WorldHeroPresentation>(true).Length == 1, "Repeated changes leave one kit/model.");
-                manager.Shutdown();
+                session.Disconnect();
                 nextStageAt = EditorApplication.timeSinceStartup + 1;
                 stage = 3;
             }
@@ -135,7 +139,7 @@ public static class NetworkPrototypeBatchChecks
             {
                 Check(manager.ConnectedClients.Count == 1 && UnityEngine.Object.FindObjectsByType<NetworkPrototypePlayer>(FindObjectsSortMode.None).Length == 1,
                     "Reconnect creates exactly one fresh player.");
-                manager.Shutdown();
+                session.Disconnect();
                 stage++;
                 nextStageAt = EditorApplication.timeSinceStartup + 1;
             }

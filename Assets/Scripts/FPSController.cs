@@ -25,6 +25,7 @@ public sealed class FPSController : MonoBehaviour
     private int suppressGameplayThroughFrame = -1;
 
     public Camera PlayerCamera => playerCamera;
+    public GunslingerDash Dash { get; set; }
     public bool CanAcceptGameplayInput => isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
         Time.frameCount > suppressGameplayThroughFrame &&
         gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
@@ -55,6 +56,7 @@ public sealed class FPSController : MonoBehaviour
 
     private void OnDisable()
     {
+        Dash?.Cancel();
         SetCursorCaptured(false);
     }
 
@@ -92,7 +94,10 @@ public sealed class FPSController : MonoBehaviour
 
         // Keep cursor/Escape processing alive while dead, without movement or gravity.
         if (gameplayBlocked || selectingHero)
+        {
+            Dash?.Cancel();
             return;
+        }
 
         if (acceptInput && mouse != null)
         {
@@ -114,7 +119,10 @@ public sealed class FPSController : MonoBehaviour
         }
 
         if (!controller.enabled || Time.deltaTime <= 0f)
+        {
+            Dash?.Cancel();
             return;
+        }
 
         bool grounded = controller.isGrounded;
         if (grounded && verticalVelocity < 0f)
@@ -131,7 +139,17 @@ public sealed class FPSController : MonoBehaviour
         velocity.y = verticalVelocity;
 
         // Continue gravity while the cursor is free; only movement/look input is paused.
-        CollisionFlags collisions = controller.Move(velocity * Time.deltaTime);
+        bool dashing = Dash != null && Dash.IsDashing;
+        Vector3 dashStep = Dash != null ? Dash.Step(Time.deltaTime) : Vector3.zero;
+        Vector3 displacement = velocity * Time.deltaTime;
+        if (dashing)
+        {
+            displacement.x = dashStep.x;
+            displacement.z = dashStep.z;
+        }
+        CollisionFlags collisions = controller.Move(displacement);
+        if (dashing && (collisions & CollisionFlags.Sides) != 0)
+            Dash.Cancel();
         if ((collisions & CollisionFlags.Below) != 0 && verticalVelocity < 0f)
             verticalVelocity = GroundedVelocity;
         if ((collisions & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
@@ -141,6 +159,7 @@ public sealed class FPSController : MonoBehaviour
     public void SetGameplayBlocked(bool blocked)
     {
         gameplayBlocked = blocked;
+        if (blocked) Dash?.Cancel();
         gameplayInputFrame = -1;
     }
 
@@ -161,6 +180,7 @@ public sealed class FPSController : MonoBehaviour
 
     public void ResetAtSpawn(Vector3 position, Quaternion facing)
     {
+        Dash?.ResetForRespawn();
         if (controller == null)
             controller = GetComponent<CharacterController>();
         bool wasEnabled = controller.enabled;
@@ -179,6 +199,7 @@ public sealed class FPSController : MonoBehaviour
     private void SetCursorCaptured(bool captured)
     {
         cursorCaptureRequested = captured;
+        if (!captured) Dash?.Cancel();
         ApplyCursorState();
     }
 

@@ -3,7 +3,7 @@ using UnityEngine;
 
 // Actor state only: no input, HUD, death, or local-player assumptions.
 [DisallowMultipleComponent]
-public sealed class PlayerHealth : MonoBehaviour, IDamageable
+public sealed class PlayerHealth : MonoBehaviour, IHealthDamageReceiver
 {
     [SerializeField, Min(1f)] private float maximumHealth = 100f;
     private float currentHealth;
@@ -25,12 +25,24 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
         initialized = true;
     }
 
-    public bool TakeDamage(float amount)
+    public bool TakeDamage(float amount) => ApplyHealthDamage(amount) > 0f;
+
+    public float ApplyHealthDamage(float amount)
     {
         Initialize();
         if (DamageBlocked || !isActiveAndEnabled || !IsPositiveFinite(amount) || currentHealth <= 0f)
-            return false;
-        return SetCurrent(currentHealth - amount);
+            return 0f;
+        float next = Mathf.Max(0f, currentHealth - amount);
+        float removed = currentHealth - next;
+        SetCurrent(next);
+        return removed;
+    }
+
+    public bool Heal(float amount)
+    {
+        Initialize();
+        return isActiveAndEnabled && !DamageBlocked && currentHealth > 0f &&
+            IsPositiveFinite(amount) && SetCurrent(currentHealth + amount);
     }
 
     public bool RestoreFullHealth()

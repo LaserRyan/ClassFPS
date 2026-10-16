@@ -14,7 +14,7 @@ public sealed class HeroDefinition : ScriptableObject
     [SerializeField] private HeroKit kitPrefab;
     [SerializeField] private GameObject avatarPrefab;
     [SerializeField] private Sprite icon;
-    [Header("Future behavior prefab slots (not executed by this milestone)")]
+    [Header("Optional selected-hero behaviors")]
     [SerializeField] private GameObject secondaryActionPrefab;
     [SerializeField] private GameObject passivePrefab;
     public string HeroId => heroId;

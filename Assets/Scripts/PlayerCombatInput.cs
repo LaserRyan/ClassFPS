@@ -10,6 +10,7 @@ public sealed class PlayerCombatInput : MonoBehaviour
     private bool primaryRequiresRelease;
     private bool secondaryRequiresRelease;
     public event System.Action<Weapon> EquippedWeaponChanged;
+    public HeroSecondary Secondary { get; set; }
 
     public Weapon EquippedWeapon
     {
@@ -26,6 +27,7 @@ public sealed class PlayerCombatInput : MonoBehaviour
     private void Awake() => movement = GetComponent<FPSController>();
     private void OnDisable()
     {
+        Secondary?.Cancel();
         primaryRequiresRelease = secondaryRequiresRelease = true;
         if (equippedWeapon != null)
             equippedWeapon.ObserveAttackButtons(Mouse.current != null && Mouse.current.leftButton.isPressed,
@@ -45,6 +47,7 @@ public sealed class PlayerCombatInput : MonoBehaviour
             equippedWeapon == null || !equippedWeapon.isActiveAndEnabled ||
             movement.PlayerCamera == null)
         {
+            Secondary?.Cancel();
             // Holding the capture click (or holding through death/focus loss)
             // must not become an attack when gameplay resumes.
             primaryRequiresRelease = mouse != null && mouse.leftButton.isPressed;
@@ -67,7 +70,12 @@ public sealed class PlayerCombatInput : MonoBehaviour
         if (!mouse.rightButton.isPressed)
             secondaryRequiresRelease = false;
         else if (!secondaryRequiresRelease &&
-            (equippedWeapon.UsesHeldSecondary || mouse.rightButton.wasPressedThisFrame))
-            equippedWeapon.SecondaryAttack(context);
+            ((Secondary == null && equippedWeapon.UsesHeldSecondary) || mouse.rightButton.wasPressedThisFrame))
+        {
+            if (Secondary != null && Secondary.isActiveAndEnabled)
+                Secondary.Activate(context);
+            else
+                equippedWeapon.SecondaryAttack(context);
+        }
     }
 }

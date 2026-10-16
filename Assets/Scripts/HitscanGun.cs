@@ -8,6 +8,7 @@ public sealed class HitscanGun : Weapon
 
     // Presentation-only notification. The shared weapon base stays independent of guns.
     public event System.Action<Vector3> ShotFired;
+    public event System.Action<Transform, IDamageable, float> HealthDamageDealt;
     private void OnDisable() => Ammo?.CancelReload();
 
     public override void PrimaryAttack(WeaponAttackContext context)
@@ -38,7 +39,14 @@ public sealed class HitscanGun : Weapon
         {
             // Search upward so a child collider can belong to a health component on its root.
             IDamageable target = nearest.collider.GetComponentInParent<IDamageable>();
-            if (target != null)
+            if (target is IHealthDamageReceiver receiver)
+            {
+                float actual = receiver.ApplyHealthDamage(Damage);
+                dealtDamage = actual > 0f;
+                if (dealtDamage)
+                    HealthDamageDealt?.Invoke(context.Owner, target, actual);
+            }
+            else if (target != null)
                 dealtDamage = target.TakeDamage(Damage);
         }
         ReportAttack(dealtDamage);

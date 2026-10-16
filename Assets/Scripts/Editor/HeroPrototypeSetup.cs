@@ -70,6 +70,7 @@ public static class HeroPrototypeSetup
         HeroKit fireKit = FireSpellPrototypeSetup.CreateKit();
         HeroDefinition fireHero = Hero("FireSpellPrototype", "prototype.fire", "Fire Spell Prototype", "Caster Prototype",
             110f, 5.25f, 1.2f, -20f, fireKit);
+        GunslingerSetup.Upgrade(gunHero);
         Validate(gunHero, swordHero, fireHero);
 
         Undo.IncrementCurrentGroup();

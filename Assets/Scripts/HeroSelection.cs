@@ -44,6 +44,15 @@ public sealed class HeroSelection : MonoBehaviour
         SelectedKit = kit;
         SelectedHero = hero;
         combat.EquippedWeapon = kit.PrimaryWeapon;
+        if (hero.SecondaryActionPrefab != null)
+        {
+            GameObject secondary = Instantiate(hero.SecondaryActionPrefab, kit.transform, false);
+            combat.Secondary = secondary.GetComponent<HeroSecondary>();
+            combat.Secondary.Bind(movement);
+        }
+        if (hero.PassivePrefab != null)
+            Instantiate(hero.PassivePrefab, kit.transform, false).GetComponent<HeroPassive>()
+                .Bind(health, kit.PrimaryWeapon);
         health.SetMaximumHealth(hero.MaximumHealth, true);
         movement.ConfigureMovement(hero.MovementSpeed, hero.JumpHeight, hero.Gravity);
         if (hero.AvatarPrefab != null)
@@ -63,6 +72,23 @@ public sealed class HeroSelection : MonoBehaviour
             message = "Hero needs a stable ID and a kit prefab.";
         else
         {
+            if ((hero.SecondaryActionPrefab != null && hero.SecondaryActionPrefab.GetComponent<HeroSecondary>() == null) ||
+                (hero.PassivePrefab != null && hero.PassivePrefab.GetComponent<HeroPassive>() == null))
+            {
+                message = "Hero behavior slots need matching HeroSecondary/HeroPassive components.";
+                return false;
+            }
+            if (hero.HeroId == "prototype.gun" &&
+                (hero.SecondaryActionPrefab == null || hero.PassivePrefab == null ||
+                 !hero.SecondaryActionPrefab.TryGetComponent(out GunslingerDash dash) ||
+                 !hero.PassivePrefab.TryGetComponent(out GunslingerLifesteal passive) ||
+                 !dash.enabled || !passive.enabled || dash.Definition == null ||
+                 dash.Definition != passive.Definition || !hero.SecondaryActionPrefab.activeSelf ||
+                 !hero.PassivePrefab.activeSelf))
+            {
+                message = "Gunslinger needs enabled dash/lifesteal prefabs with the same ability definition. Re-run hero setup.";
+                return false;
+            }
             Weapon weapon = hero.KitPrefab.PrimaryWeapon;
             if (weapon == null || hero.KitPrefab.GetComponentsInChildren<Weapon>(true).Length != 1 ||
                 !weapon.transform.IsChildOf(hero.KitPrefab.transform) || !weapon.enabled ||

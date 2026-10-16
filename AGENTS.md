@@ -490,3 +490,36 @@ secondary, ammo, burn, and git features.
   This handoff update will be a separate documentation commit.
 - Unrelated untracked root file beginning 'can shooting, target health, and obstacle
   colors' remains untouched. Do not blindly stage it or delete it.
+
+### Gunslinger implementation (2026-10-16)
+
+- Gun Prototype is upgraded in place by hero setup to Gunslinger, retaining
+  `prototype.gun`, existing asset paths/GUIDs, primary tuning, ammo/reload, sounds
+  and presentation settings. A collider-free placeholder revolver cylinder is added
+  once. Fire and Sword are preserved. No weapon switching or other hero was added.
+- Hero secondary/passive prefab slots now instantiate optional HeroSecondary and
+  HeroPassive behaviors under the selected kit. Gunslinger has GunslingerDash and
+  GunslingerLifesteal; they persist with the kit through respawn.
+- GunslingerAbilities.asset under Assets/Definitions/Heroes configures 5 m / 0.2 s
+  dash, 5 s activation-based cooldown and 15% lifesteal. Existing gun hero/weapon
+  assets remain the stat/primary tuning locations. Runtime progress never writes assets.
+- Dash is press-only MB2 through existing release gates. Captured horizontal facing
+  overrides ordinary horizontal displacement through the existing CharacterController
+  Move, retaining gravity/vertical velocity/look/shooting/reload. Side collision ends
+  travel. Cursor/focus/death/disable cancels; ResetAtSpawn resets state and cooldown.
+  One GunslingerDashHUD is instantiated with its behavior. DashPresentation has safe
+  optional clip/particle references and a separate 2D AudioSource; no new audio files.
+- Optional IHealthDamageReceiver reports actual removed health; PlayerHealth and
+  TargetHealth implement it without changing legacy IDamageable callers. HitscanGun
+  emits a precise HealthDamageDealt event only for positive results. Selected passive
+  subscribes to its primary only, rejects self/dead/disabled attacker, and uses Heal
+  to clamp and notify the existing health HUD. Killing hits heal; overkill does not.
+  Unknown legacy damage-only receivers retain hit feedback but cannot grant lifesteal.
+- Run Tools > ClassFPS > Set Up Prototype Hero Selection to generate/save new ability
+  asset/prefabs and wire the existing hero, then Validate Prototype Hero Assets.
+  Setup preserves tuning and assigned optional references; no scene YAML was edited.
+- Completed: 33 focused Gunslinger assertions (real health sources with small Unity
+  shims), 44 existing heat assertions, standalone Runtime Editor/development/release
+  compilation and separate Editor compilation, source/docs whitespace checks.
+  No native Unity setup/validator/Play mode, physics, rendering, audio or build tests
+  were run. GUNSLINGER_TEST.md lists tuning, setup and pending gameplay checks.

@@ -9,6 +9,8 @@ public sealed class PlayerHealth : MonoBehaviour, IHealthDamageReceiver
     private float currentHealth;
     private bool initialized;
     public bool DamageBlocked { get; set; }
+    // Presentation-only network milestone: no offline health operation may affect this actor.
+    public bool NetworkProtected { get; set; }
 
     public float MaximumHealth => ValidMaximum(maximumHealth);
     public float CurrentHealth { get { Initialize(); return currentHealth; } }
@@ -30,7 +32,7 @@ public sealed class PlayerHealth : MonoBehaviour, IHealthDamageReceiver
     public float ApplyHealthDamage(float amount)
     {
         Initialize();
-        if (DamageBlocked || !isActiveAndEnabled || !IsPositiveFinite(amount) || currentHealth <= 0f)
+        if (NetworkProtected || DamageBlocked || !isActiveAndEnabled || !IsPositiveFinite(amount) || currentHealth <= 0f)
             return 0f;
         float next = Mathf.Max(0f, currentHealth - amount);
         float removed = currentHealth - next;
@@ -41,13 +43,14 @@ public sealed class PlayerHealth : MonoBehaviour, IHealthDamageReceiver
     public bool Heal(float amount)
     {
         Initialize();
-        return isActiveAndEnabled && !DamageBlocked && currentHealth > 0f &&
+        return !NetworkProtected && isActiveAndEnabled && !DamageBlocked && currentHealth > 0f &&
             IsPositiveFinite(amount) && SetCurrent(currentHealth + amount);
     }
 
     public bool RestoreFullHealth()
     {
         Initialize();
+        if (NetworkProtected) return false;
         GetComponent<BurnStatus>()?.Clear();
         return isActiveAndEnabled && SetCurrent(MaximumHealth);
     }

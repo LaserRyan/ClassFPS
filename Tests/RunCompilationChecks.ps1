@@ -1,4 +1,7 @@
-param([string]$UnityEditorData = 'C:/Program Files/Unity/Hub/Editor/6000.3.26f1/Editor/Data')
+param(
+    [string]$UnityEditorData = 'C:/Program Files/Unity/Hub/Editor/6000.3.26f1/Editor/Data',
+    [string]$ScriptAssemblies = ''
+)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $checkDir = Join-Path ([IO.Path]::GetTempPath()) ('ClassFPS-Compile-' + [guid]::NewGuid().ToString('N'))
@@ -6,7 +9,13 @@ New-Item -ItemType Directory -Path $checkDir | Out-Null
 $references = @(Get-ChildItem "$UnityEditorData/NetStandard/ref/2.1.0" -Filter '*.dll')
 $references += @(Get-ChildItem "$UnityEditorData/Managed/UnityEngine" -Filter '*.dll')
 $referenceArgs = @($references | ForEach-Object { '-r:"' + $_.FullName + '"' })
-$referenceArgs += '-r:"' + (Join-Path $projectRoot 'Library/ScriptAssemblies/Unity.InputSystem.dll') + '"'
+if (!$ScriptAssemblies) { $ScriptAssemblies = Join-Path $projectRoot 'Library/ScriptAssemblies' }
+foreach ($name in @('Unity.InputSystem', 'Unity.Netcode.Runtime', 'Unity.Networking.Transport',
+    'Unity.Collections', 'Unity.Mathematics', 'Unity.Burst')) {
+    $assembly = Join-Path $ScriptAssemblies ($name + '.dll')
+    if (!(Test-Path $assembly)) { throw "Missing $assembly. Allow Unity to resolve networking packages/import scripts first." }
+    $referenceArgs += '-r:"' + $assembly + '"'
+}
 $sources = @(Get-ChildItem "$projectRoot/Assets/Scripts" -Filter '*.cs' | ForEach-Object { '"' + $_.FullName + '"' })
 foreach ($configuration in @('Editor', 'Development', 'Release')) {
     $output = Join-Path $checkDir "Runtime-$configuration.dll"

@@ -12,6 +12,7 @@ public sealed class FPSController : MonoBehaviour
     [SerializeField, Min(0f)] private float jumpHeight = 1.2f;
     [Tooltip("Downward acceleration in metres per second squared; must be negative.")]
     [SerializeField] private float gravity = -20f;
+    [SerializeField] private bool ownsLocalInput = true;
 
     private const float GroundedVelocity = -2f;
     private const float PitchLimit = 89f;
@@ -26,7 +27,7 @@ public sealed class FPSController : MonoBehaviour
 
     public Camera PlayerCamera => playerCamera;
     public GunslingerDash Dash { get; set; }
-    public bool CanAcceptGameplayInput => isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
+    public bool CanAcceptGameplayInput => ownsLocalInput && isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
         Time.frameCount > suppressGameplayThroughFrame &&
         gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
         Application.isFocused && Cursor.lockState == CursorLockMode.Locked &&
@@ -69,6 +70,7 @@ public sealed class FPSController : MonoBehaviour
 
     private void Update()
     {
+        if (!ownsLocalInput) return;
         Keyboard keyboard = Keyboard.current;
         Mouse mouse = Mouse.current;
         bool capturedThisFrame = false;
@@ -212,10 +214,13 @@ public sealed class FPSController : MonoBehaviour
 
     private void ApplyCursorState()
     {
+        if (!ownsLocalInput) return;
         bool captured = cursorCaptureRequested && isActiveAndEnabled && Application.isFocused && !selectingHero;
         Cursor.lockState = captured ? CursorLockMode.Locked : CursorLockMode.None;
         Cursor.visible = !captured;
     }
+
+    public void SetLocalInputOwnership(bool owned) => ownsLocalInput = owned;
 
     private void OnValidate()
     {

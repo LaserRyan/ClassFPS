@@ -14,6 +14,8 @@ public sealed class HeroSelection : MonoBehaviour
     private PlayerLifecycle lifecycle;
     private string error;
     private Vector2 selectionScroll;
+    private Transform selectedAvatar;
+    public HeroDefinition[] Heroes => heroes;
     public HeroDefinition SelectedHero { get; private set; }
     public HeroKit SelectedKit { get; private set; }
     public WorldHeroPresentation SelectedWorldPresentation { get; private set; }
@@ -40,37 +42,73 @@ public sealed class HeroSelection : MonoBehaviour
             error = "Player camera is missing.";
             return false;
         }
+        ApplyHero(hero, false, true);
+        return true;
+    }
+
+    // Network authority lives outside selection. This only builds/reset local instances.
+    public void ApplyNetworkHero(HeroDefinition hero, bool owner, Vector3 spawn, Quaternion facing)
+    {
+        ClearPresentation();
+        ApplyHero(hero, true, owner);
+        movement.ResetAtSpawn(spawn, facing);
+    }
+
+    private void ClearPresentation()
+    {
+        combat.RequirePrimaryRelease();
+        combat.Secondary?.Cancel();
+        combat.Secondary = null;
+        movement.Dash = null;
+        combat.EquippedWeapon = null;
+        // Deactivate immediately; deferred Destroy must not leave two active kits/subscribers.
+        if (SelectedKit != null) { SelectedKit.gameObject.SetActive(false); Destroy(SelectedKit.gameObject); }
+        if (SelectedWorldPresentation != null)
+        { SelectedWorldPresentation.gameObject.SetActive(false); Destroy(SelectedWorldPresentation.gameObject); }
+        if (selectedAvatar != null) { selectedAvatar.gameObject.SetActive(false); Destroy(selectedAvatar.gameObject); }
+    }
+
+    private void ApplyHero(HeroDefinition hero, bool network, bool owner)
+    {
         // Runtime state exists only in this selected instance; no shared asset writes.
         HeroKit kit = Instantiate(hero.KitPrefab, movement.PlayerCamera.transform, false);
         SelectedKit = kit;
         SelectedHero = hero;
         combat.EquippedWeapon = kit.PrimaryWeapon;
-        if (hero.SecondaryActionPrefab != null)
+        if (!network && hero.SecondaryActionPrefab != null)
         {
             GameObject secondary = Instantiate(hero.SecondaryActionPrefab, kit.transform, false);
             combat.Secondary = secondary.GetComponent<HeroSecondary>();
             combat.Secondary.Bind(movement);
         }
-        if (hero.PassivePrefab != null)
+        if (!network && hero.PassivePrefab != null)
             Instantiate(hero.PassivePrefab, kit.transform, false).GetComponent<HeroPassive>()
                 .Bind(health, kit.PrimaryWeapon);
         health.SetMaximumHealth(hero.MaximumHealth, true);
         movement.ConfigureMovement(hero.MovementSpeed, hero.JumpHeight, hero.Gravity);
         Transform avatar = hero.AvatarPrefab != null ? Instantiate(hero.AvatarPrefab, transform, false).transform : null;
+        selectedAvatar = avatar;
         WorldHeroPresentation world = hero.WorldPresentationPrefab != null ?
             Instantiate(hero.WorldPresentationPrefab, transform, false) : WorldHeroPlaceholder.CreateFallback(hero.HeroId);
         world.transform.SetParent(transform, false);
         SelectedWorldPresentation = world;
-        world.Bind(movement.PlayerCamera, health, kit.PrimaryWeapon);
+        world.Bind(owner ? movement.PlayerCamera : null, health, kit.PrimaryWeapon);
         PlayerViewVisibility visibility = GetComponent<PlayerViewVisibility>();
         if (visibility == null) visibility = gameObject.AddComponent<PlayerViewVisibility>();
-        visibility.Configure(movement.PlayerCamera, kit.transform, world.transform, avatar);
+        visibility.Configure(owner ? movement.PlayerCamera : null, kit.transform, world.transform, avatar);
+        if (network)
+        {
+            kit.PrimaryWeapon.SetAttacksBlocked(true);
+            kit.PrimaryWeapon.RestoreResources();
+            kit.PrimaryWeapon.enabled = false;
+            foreach (AudioSource source in kit.GetComponentsInChildren<AudioSource>(true))
+            { source.Stop(); source.enabled = false; }
+        }
         lifecycle.RefreshWeapons();
-        lifecycle.PlaceAtSpawn();
-        health.DamageBlocked = false;
+        if (!network) lifecycle.PlaceAtSpawn();
+        health.DamageBlocked = network;
         combat.RequirePrimaryRelease();
         movement.SetHeroSelection(false);
-        return true;
     }
 
     public static bool IsValid(HeroDefinition hero, out string message)

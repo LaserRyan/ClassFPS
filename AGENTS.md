@@ -555,3 +555,53 @@ secondary, ammo, burn, and git features.
   views, configuration, ownership seam and repeated respawn/gameplay checks.
 - Existing local hero/weapon tuning and Gunslinger-generated assets were left intact
   and excluded from the presentation commit, along with the unrelated root file.
+
+### First multiplayer milestone (2026-10-16)
+
+This section supersedes the earlier prohibition on networking for this milestone.
+
+- NGO 2.13.3 + transitive Unity Transport 2.6.0 added. No prior networking runtime
+  existed (Multiplayer Center was tooling). Chosen for maintained Unity 6 GameObject
+  ownership/spawning/variables/RPC support; no Relay/cloud/account requirement.
+- Assets/MultiplayerTest.unity is a separate Unity-generated copy of MovementTest;
+  NetworkPrototypeSession provides hero-before-connect, Host/Join/address/Disconnect,
+  UDP 7777, configurable distinct spawn slots and an Offline test option. MovementTest
+  remains the independent offline workflow. Tools > ClassFPS > Set Up/Validate Local
+  Multiplayer Test creates/reuses scene, inert NetworkPlayer prefab and one explicit
+  NetworkPrefabs list without duplicates. Setup preserves existing tuning/art.
+- Server approval resolves stable hero IDs from its known catalog. Server spawns one
+  owned player/connection. Server-owned NetworkHeroState retains ID, spawn and revision;
+  owner-written NetworkPlayerPose retains position/yaw/pitch/revision at up to 30 Hz.
+  Observers smooth transforms; world pitch uses SetAimPitch. Late joiners receive
+  current state. Owner-authoritative movement is trusted; no prediction, anti-cheat or
+  authoritative combat/damage/ability execution is implemented. Plan those separately.
+- Network prefab defaults disable all input/cameras/listeners/HUDs/offline lifecycle
+  before spawn. Ownership enables only local movement/camera/listener/HUD. FPSController's
+  ownsLocalInput gate prevents remote cursor writes (offline defaults true). Existing
+  per-actor rendering filter binds owner's camera or null for remote world visibility.
+- Combat input, weapon execution/reload input, health debug and offline respawn stay
+  off online. Secondary/passives are not instantiated; primary is blocked/disabled;
+  kit audio stopped/disabled. PlayerHealth.NetworkProtected rejects offline damage,
+  Heal and RestoreFullHealth. Hero configuration explicitly resets actor stats/health.
+  Bots pause online; offline source player is inactive. Offline gameplay remains intact.
+- HeroSelection shares instance creation through ApplyNetworkHero; changes deactivate
+  old kit/world/avatar before deferred destruction and reset spawn/velocity/pitch and
+  resources. This does not unlock normal offline selection.
+- Allow Test Hero Changes defaults false on Network Prototype Session. F6 menu/request
+  code is Editor/development-only. Server enforces its own build gate, setting, RPC
+  ownership/sender, known ID and expected revision/concurrency. Atomic new revision
+  respawns the same network actor; old pose epochs are ignored. Closing releases cursor
+  until explicit recapture and preserves fresh input gates. Development component context
+  menu probe exercises release/disabled server rejection over the real RPC; omitted from
+  release clients. These test rules are separate from future match selection.
+- Completed: actual isolated Unity import/NGO code generation; native single-host setup
+  twice + 22 lifecycle/RPC assertions; standalone Runtime Editor/development/release and
+  separate Editor compilation; 17+17+17 network policy/health assertions; existing 33 gun,
+  44 heat and 16 visibility checks. Isolated Editor Search startup indexing exception
+  was unrelated to the passing host assertions. No standalone build/two-instance
+  connection, graphical/input/audio or full offline regression was run.
+- MULTIPLAYER_TEST.md has exact Editor-host/standalone-client build/setup steps,
+  development/release gate testing, ownership/late-join/disconnect/manual regressions,
+  authority limits and asset locations. New scene/network assets were generated with
+  Editor APIs in an isolated copy; original local asset tuning/generated hero art and
+  unrelated root file were preserved and excluded from this feature commit.

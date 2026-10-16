@@ -458,3 +458,35 @@ has not been committed or pushed automatically.
 - No burn visuals/audio added. See BURN_TEST.md for pending Unity gameplay checks.
 
 - Deferred presentation (lower priority): outwardly visible burn indicators on affected actors and a burn status indicator on the player's health bar when hit. Neither is implemented yet.
+
+### Latest session handoff (2026-10-16)
+
+This section supersedes older historical statements above about missing hero,
+secondary, ammo, burn, and git features.
+
+- Three selectable prototypes exist: Gun, Sword, and Fire Spell. One fixed kit per
+  hero, no gameplay switching. Fire MB1 casts a projectile; held MB2 fires flame.
+- Fire shares one heat/energy pool, incremental regeneration, overheat lockout and
+  release-both requirement. Accepted final-ammo fireballs finish; canceled windups
+  refund once. Respawn resets resources. MB1/MB2 cannot execute together: active
+  flame owns attacks until MB2 release; casts block flame through release.
+- Burn percent/duration are editable on FireSpellPrototype.asset. Default 20% of
+  base attack damage per second for 3 seconds. Flame uses base DPS. One refreshed
+  burn per receiver; stronger active rate wins. No stacking. Full-health restoration
+  clears player burn. Bot projectiles do not burn.
+- Deferred, lower priority: visible burn indication on affected actors and a burn
+  status on the player's health bar. No indicator implementation requested yet.
+- Setup: Tools > ClassFPS > Set Up Prototype Hero Selection upgrades fire energy
+  and presentation references without duplicate kits. Preserve existing asset tuning.
+- Validation completed: standalone Runtime compilation in Editor/development/release
+  configurations, separate Editor compilation, and 44 pure heat resource checks.
+  No agent Unity Play mode, physics, rendering or audio validation. A Unity-generated
+  prefab empty m_Name line has trailing whitespace; it was not manually edited.
+- Pending gameplay checklists: HEAT_AMMO_TEST.md, BURN_TEST.md, FIRE_SPELL_TEST.md,
+  HERO_TEST.md. Check exclusive inputs, refund/last-ammo casts, regeneration/overheat,
+  burn totals/refresh/expiry, wall blocking, child colliders and repeated respawns.
+- Feature commit 7434229 was successfully pushed to origin/main. The initially
+  delayed Git Credential Manager push completed; local origin/main matches it.
+  This handoff update will be a separate documentation commit.
+- Unrelated untracked root file beginning 'can shooting, target health, and obstacle
+  colors' remains untouched. Do not blindly stage it or delete it.

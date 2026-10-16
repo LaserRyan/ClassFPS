@@ -523,3 +523,35 @@ secondary, ammo, burn, and git features.
   compilation and separate Editor compilation, source/docs whitespace checks.
   No native Unity setup/validator/Play mode, physics, rendering, audio or build tests
   were run. GUNSLINGER_TEST.md lists tuning, setup and pending gameplay checks.
+
+### World player presentation (2026-10-16)
+
+- HeroDefinition has optional World Presentation Prefab. Selection creates one visual
+  root under Player, separately from the first-person HeroKit under Main Camera.
+  Blue Gunslinger/revolver, orange Fire Wizard/casting hand and purple Sword/blade
+  placeholders include a forward visor. No colliders, damage logic, projectile/audio
+  copies, networking or layer/project-setting changes. Null art uses a safe runtime
+  placeholder; custom visual prefabs are validated against gameplay/physics components.
+- Existing hero setup creates/reuses GunslingerWorld, FireWizardWorld and
+  SwordPrototypeWorld prefabs under Assets/Prefabs/Heroes and URP materials under
+  Assets/Materials/WorldHeroes. Assigned art, existing tuning, kit visuals and sounds
+  are preserved. Run setup in Unity to generate/save these assets; no scene YAML edited.
+- WorldHeroPresentation keeps root yaw parented to Player and copies camera pitch
+  only to an aim pivot. Accepted gun/sword/fire start events drive a small visual kick
+  and AcceptedAttack presentation hook. Full third-person animations remain deferred.
+  Health events hide/show the child Visuals on death/restore without rebuilding the model.
+- PlayerViewVisibility uses URP begin/end-camera callbacks and temporary restored
+  Renderer.forceRenderingOff per actor. Owner camera hides its own world renderers;
+  external cameras hide its first-person kit. Other actors' bodies are unaffected.
+  Renderer.enabled, camera masks and layers stay unchanged. Scene view is the external
+  inspection procedure; no additional camera or AudioListener is created.
+- Future ownership code binds each local actor via SetOwnerCamera(localCamera), and
+  remote actors via SetOwnerCamera(null). Remote aim can bind without a camera and
+  supply SetAimPitch. No networking or remote gameplay controller implemented.
+- Completed: 16 shim-based checks of actual camera filtering/restoration, Runtime
+  Editor/development/release compilation and separate Editor compilation, source/docs
+  whitespace checks. No Unity setup/validator/Play mode, native rendering/culling,
+  physics/audio or build executed. WORLD_PRESENTATION_TEST.md covers both camera
+  views, configuration, ownership seam and repeated respawn/gameplay checks.
+- Existing local hero/weapon tuning and Gunslinger-generated assets were left intact
+  and excluded from the presentation commit, along with the unrelated root file.

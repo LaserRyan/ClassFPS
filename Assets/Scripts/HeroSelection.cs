@@ -16,6 +16,7 @@ public sealed class HeroSelection : MonoBehaviour
     private Vector2 selectionScroll;
     public HeroDefinition SelectedHero { get; private set; }
     public HeroKit SelectedKit { get; private set; }
+    public WorldHeroPresentation SelectedWorldPresentation { get; private set; }
 
     private void Awake()
     {
@@ -55,8 +56,15 @@ public sealed class HeroSelection : MonoBehaviour
                 .Bind(health, kit.PrimaryWeapon);
         health.SetMaximumHealth(hero.MaximumHealth, true);
         movement.ConfigureMovement(hero.MovementSpeed, hero.JumpHeight, hero.Gravity);
-        if (hero.AvatarPrefab != null)
-            Instantiate(hero.AvatarPrefab, transform, false);
+        Transform avatar = hero.AvatarPrefab != null ? Instantiate(hero.AvatarPrefab, transform, false).transform : null;
+        WorldHeroPresentation world = hero.WorldPresentationPrefab != null ?
+            Instantiate(hero.WorldPresentationPrefab, transform, false) : WorldHeroPlaceholder.CreateFallback(hero.HeroId);
+        world.transform.SetParent(transform, false);
+        SelectedWorldPresentation = world;
+        world.Bind(movement.PlayerCamera, health, kit.PrimaryWeapon);
+        PlayerViewVisibility visibility = GetComponent<PlayerViewVisibility>();
+        if (visibility == null) visibility = gameObject.AddComponent<PlayerViewVisibility>();
+        visibility.Configure(movement.PlayerCamera, kit.transform, world.transform, avatar);
         lifecycle.RefreshWeapons();
         lifecycle.PlaceAtSpawn();
         health.DamageBlocked = false;
@@ -72,6 +80,7 @@ public sealed class HeroSelection : MonoBehaviour
             message = "Hero needs a stable ID and a kit prefab.";
         else
         {
+            if (!WorldHeroPresentation.IsVisualOnly(hero.WorldPresentationPrefab, out message)) return false;
             if ((hero.SecondaryActionPrefab != null && hero.SecondaryActionPrefab.GetComponent<HeroSecondary>() == null) ||
                 (hero.PassivePrefab != null && hero.PassivePrefab.GetComponent<HeroPassive>() == null))
             {

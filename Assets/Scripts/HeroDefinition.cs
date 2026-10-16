@@ -14,6 +14,8 @@ public sealed class HeroDefinition : ScriptableObject
     [SerializeField] private HeroKit kitPrefab;
     [SerializeField] private GameObject avatarPrefab;
     [SerializeField] private Sprite icon;
+    [Header("World presentation (visuals only)")]
+    [SerializeField] private WorldHeroPresentation worldPresentationPrefab;
     [Header("Optional selected-hero behaviors")]
     [SerializeField] private GameObject secondaryActionPrefab;
     [SerializeField] private GameObject passivePrefab;
@@ -27,6 +29,7 @@ public sealed class HeroDefinition : ScriptableObject
     public HeroKit KitPrefab => kitPrefab;
     public GameObject AvatarPrefab => avatarPrefab;
     public Sprite Icon => icon;
+    public WorldHeroPresentation WorldPresentationPrefab => worldPresentationPrefab;
     public GameObject SecondaryActionPrefab => secondaryActionPrefab;
     public GameObject PassivePrefab => passivePrefab;
 }

@@ -71,6 +71,9 @@ public static class HeroPrototypeSetup
         HeroDefinition fireHero = Hero("FireSpellPrototype", "prototype.fire", "Fire Spell Prototype", "Caster Prototype",
             110f, 5.25f, 1.2f, -20f, fireKit);
         GunslingerSetup.Upgrade(gunHero);
+        WorldHeroPresentationSetup.Upgrade(gunHero, "Gunslinger");
+        WorldHeroPresentationSetup.Upgrade(swordHero, "SwordPrototype");
+        WorldHeroPresentationSetup.Upgrade(fireHero, "FireWizard");
         Validate(gunHero, swordHero, fireHero);
 
         Undo.IncrementCurrentGroup();

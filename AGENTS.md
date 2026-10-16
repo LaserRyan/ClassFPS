@@ -624,7 +624,10 @@ This section supersedes the earlier prohibition on networking for this milestone
 
 - User reports connection/development hero changes working and, after rebuilding with
   b747cac, Disconnect working. Do not infer that the full manual matrix was completed.
-- SESSION_REPORT.md records results, saved configuration and outstanding checks.
+- User preference: deliver text/session reports only in this chat. Do not create report
+  files unless the user explicitly requests a file. SESSION_REPORT.md was removed at
+  the user's request. Continue updating AGENTS.md and task-specific setup/test guides
+  when requested; these do not replace the chat report.
 - User requested that everything be pushed. Reviewed saved hero/weapon assets, generated
   ability/world prefabs/materials, multiplayer scene, Unity render/build settings and
   lockfile are now included rather than leaving them only on this machine. Their values

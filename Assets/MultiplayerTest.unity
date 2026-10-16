@@ -1926,7 +1926,7 @@ MonoBehaviour:
   spawnOrigin: {x: 7, y: 0.05, z: 0}
   spawnYaw: 0
   spawnSpacing: 3
-  allowTestHeroChanges: 0
+  allowTestHeroChanges: 1
   address: 127.0.0.1
 --- !u!114 &1316696465
 MonoBehaviour:
@@ -1953,7 +1953,7 @@ MonoBehaviour:
     Address: 127.0.0.1
     Port: 7777
     WebSocketPath: /
-    ServerListenAddress: 
+    ServerListenAddress: 127.0.0.1
     ClientBindPort: 0
   DebugSimulator:
     PacketDelayMS: 0

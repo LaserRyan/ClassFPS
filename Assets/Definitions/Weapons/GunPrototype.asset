@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GunWeaponDefinition
   damage: 25
   range: 100
-  cooldown: 0.2
-  magazineCapacity: 12
+  cooldown: 0.4
+  magazineCapacity: 6
   reloadDuration: 1.5
   automaticReload: 1

@@ -20,6 +20,8 @@ MonoBehaviour:
   collisionRadius: 0.2
   projectileLifetime: 4
   projectilePrefab: {fileID: 1102910846406567747, guid: fe4532e4b600ee74094d4a36313d187a, type: 3}
+  burnPercent: 20
+  burnDuration: 3
   maximumEnergy: 100
   fireballCost: 25
   flamethrowerConsumption: 30

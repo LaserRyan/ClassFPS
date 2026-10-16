@@ -22,5 +22,6 @@ MonoBehaviour:
   kitPrefab: {fileID: 5290944654831906654, guid: 4bf0c5157f1348546ac23083d37b30ca, type: 3}
   avatarPrefab: {fileID: 0}
   icon: {fileID: 0}
+  worldPresentationPrefab: {fileID: 1500912132340665311, guid: 1089c2f44edf2094b902575b69e63c8b, type: 3}
   secondaryActionPrefab: {fileID: 0}
   passivePrefab: {fileID: 0}

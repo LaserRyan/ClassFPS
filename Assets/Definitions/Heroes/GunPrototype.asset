@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: GunPrototype
   m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
   heroId: prototype.gun
-  displayName: Gun Prototype
-  heroClass: Ranged Prototype
+  displayName: Gunslinger
+  heroClass: Revolver / Dash / Lifesteal
   maximumHealth: 100
   movementSpeed: 5
   jumpHeight: 1.2
@@ -22,5 +22,6 @@ MonoBehaviour:
   kitPrefab: {fileID: 2967339625052575493, guid: a25878c4626d55d4b8d52e5da407488b, type: 3}
   avatarPrefab: {fileID: 0}
   icon: {fileID: 0}
-  secondaryActionPrefab: {fileID: 0}
-  passivePrefab: {fileID: 0}
+  worldPresentationPrefab: {fileID: 5395484907255950378, guid: 299b4736112c3a640a194c65429ff4a5, type: 3}
+  secondaryActionPrefab: {fileID: 4917670763519917439, guid: 0c500d39204b083478213d337c47902f, type: 3}
+  passivePrefab: {fileID: 1617912717715153004, guid: 652e9c58abc775e40907c4ad4da2b439, type: 3}

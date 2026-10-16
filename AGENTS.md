@@ -619,3 +619,17 @@ This section supersedes the earlier prohibition on networking for this milestone
   Runtime Editor/development/release and separate Editor compilation passed.
   Actual two-window mouse/UI retesting remains manual; rebuild the exe to include fixes.
   No scene/assets/settings were edited; current local user changes remain unstaged.
+
+### User test and saved-project audit
+
+- User reports connection/development hero changes working and, after rebuilding with
+  b747cac, Disconnect working. Do not infer that the full manual matrix was completed.
+- SESSION_REPORT.md records results, saved configuration and outstanding checks.
+- User requested that everything be pushed. Reviewed saved hero/weapon assets, generated
+  ability/world prefabs/materials, multiplayer scene, Unity render/build settings and
+  lockfile are now included rather than leaving them only on this machine. Their values
+  were preserved. Current resolved Transport is 2.7.4 (initial isolated run used 2.6.0).
+- Saved MultiplayerTest currently has the user's Allow Test Hero Changes test override
+  enabled. Code default remains false; release servers still enforce the compile gate.
+- The known unrelated root file remains excluded. Executable builds and generated Unity
+  directories stay ignored; source/project state is tracked instead.

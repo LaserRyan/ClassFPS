@@ -68,6 +68,16 @@ public sealed class PlayerHealth : MonoBehaviour, IHealthDamageReceiver
             HealthChanged?.Invoke(currentHealth, maximumHealth);
     }
 
+    // Network adapter supplies server snapshots; ordinary damage/heal stay protected.
+    internal void ApplyNetworkSnapshot(float current, float maximum)
+    {
+        if (!NetworkProtected) return;
+        Initialize();
+        maximumHealth = ValidMaximum(maximum);
+        currentHealth = Mathf.Clamp(current, 0f, maximumHealth);
+        HealthChanged?.Invoke(currentHealth, maximumHealth);
+    }
+
     private bool SetCurrent(float value)
     {
         float next = Mathf.Clamp(value, 0f, MaximumHealth);

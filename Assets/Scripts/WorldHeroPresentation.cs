@@ -19,6 +19,17 @@ public sealed class WorldHeroPresentation : MonoBehaviour
     private Quaternion aimRest;
     private Quaternion attackRest;
     private Material fallbackMaterial;
+    private LineRenderer networkTracer;
+    private Material networkTracerMaterial;
+    private float networkTracerUntil;
+    public void PresentNetworkShot(Vector3 endpoint)
+    {
+        if (networkTracer == null) return;
+        networkTracer.SetPosition(0, attackPivot != null ? attackPivot.position : transform.position + Vector3.up * 1.4f);
+        networkTracer.SetPosition(1, endpoint);
+        networkTracer.enabled = true;
+        networkTracerUntil = Time.time + .07f;
+    }
     public event Action AcceptedAttack;
 
     public static bool IsVisualOnly(WorldHeroPresentation presentation, out string error)
@@ -46,6 +57,24 @@ public sealed class WorldHeroPresentation : MonoBehaviour
     public void Bind(Camera aimSource, PlayerHealth actorHealth, Weapon weapon)
     {
         Unsubscribe();
+        // Created before PlayerViewVisibility caches this actor's world renderers.
+        if (networkTracer == null && GetComponentInParent<NetworkPrototypePlayer>() != null)
+        {
+            var line = new GameObject("Network world shot tracer");
+            line.transform.SetParent(transform, false);
+            networkTracer = line.AddComponent<LineRenderer>();
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader != null)
+            {
+                networkTracerMaterial = new Material(shader);
+                networkTracerMaterial.SetColor("_BaseColor", new Color(1f, .8f, .2f));
+                networkTracer.sharedMaterial = networkTracerMaterial;
+            }
+            networkTracer.positionCount = 2;
+            networkTracer.useWorldSpace = true;
+            networkTracer.startWidth = networkTracer.endWidth = .018f;
+            networkTracer.enabled = false;
+        }
         aimCamera = aimSource;
         health = actorHealth;
         primary = weapon;
@@ -94,16 +123,18 @@ public sealed class WorldHeroPresentation : MonoBehaviour
     private void ResetPose()
     {
         kick = 0f;
+        if (networkTracer != null) networkTracer.enabled = false;
         if (aimPivot != null) aimPivot.localRotation = aimRest;
         if (attackPivot != null) attackPivot.localRotation = attackRest;
     }
     private void LateUpdate()
     {
+        if (networkTracer != null && Time.time >= networkTracerUntil) networkTracer.enabled = false;
         if (aimCamera != null) SetAimPitch(Mathf.DeltaAngle(0f, aimCamera.transform.localEulerAngles.x));
         if (aimPivot != null) aimPivot.localRotation = aimRest * Quaternion.Euler(pitch, 0f, 0f);
         if (attackPivot != null) attackPivot.localRotation = attackRest * Quaternion.Euler(-kick, 0f, 0f);
         kick *= Mathf.Exp(-recoverySpeed * Time.deltaTime);
     }
     public void OwnFallbackMaterial(Material material) => fallbackMaterial = material;
-    private void OnDestroy() { if (fallbackMaterial != null) Destroy(fallbackMaterial); }
+    private void OnDestroy() { if (fallbackMaterial != null) Destroy(fallbackMaterial); if (networkTracerMaterial != null) Destroy(networkTracerMaterial); }
 }

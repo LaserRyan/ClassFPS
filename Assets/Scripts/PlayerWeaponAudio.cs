@@ -11,6 +11,8 @@ public sealed class PlayerWeaponAudio : MonoBehaviour
     [SerializeField] private AudioClip swordClip;
     [SerializeField, Range(0f, 1f)] private float gunVolume = 0.7f;
     [SerializeField, Range(0f, 1f)] private float swordVolume = 0.7f;
+    public AudioClip GunClip => gunClip;
+    public float GunVolume => gunVolume;
     private AudioSource source;
     private PlayerCombatInput combat;
     private FPSController movement;

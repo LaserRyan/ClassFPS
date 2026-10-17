@@ -636,3 +636,48 @@ This section supersedes the earlier prohibition on networking for this milestone
   enabled. Code default remains false; release servers still enforce the compile gate.
 - The known unrelated root file remains excluded. Executable builds and generated Unity
   directories stay ignored; source/project state is tracked instead.
+
+### Server-authoritative revolver combat (2026-10-17)
+
+This supersedes earlier statements that all online combat is disabled.
+
+- Existing NGO ownership/spawn/catalog setup is retained. NetworkPrototypePlayer's
+  combat partial owns server revolver state and server-written combat snapshots.
+  Gunslinger MB1/R and selected lifesteal work online; dash, Fire/Sword attacks,
+  burn/projectiles and instantiated secondary/passive behaviors remain disabled.
+  All catalog heroes can receive server revolver damage, die and respawn.
+- Owner sends generation/sequence/normalized aim/fire-or-reload intent, never origin,
+  damage or hit results. Server checks owner/sender, known equipped gun, alive state,
+  finite aim, revision, duplicate/flood rate, cooldown/ammo/reload. Ray origin uses
+  server player transform and prefab camera-local eye offset; closest blocking
+  surface wins, shooter/dead colliders ignored. Only network actors receive damage.
+- Server computes actual health removed after remaining-health clamping and selected
+  Gunslinger passive healing; no overkill healing, self healing, recursion or revive.
+  NetworkProtected keeps local weapon/bot/debug damage and healing ineffective.
+  Server snapshots update PlayerHealth/WeaponAmmo and existing event-driven HUDs.
+- One server deadline handles death (default 3 seconds). Owner movement/input and
+  dead colliders are disabled. Respawn/hero change increments the existing revision,
+  resets health/ammo/reload/cooldown and pose/vertical velocity, and creates one kit.
+  Old-life fire and poses cannot undo spawn; disconnect destroys the actor/deadline.
+  Owner movement remains trusted; no movement anti-cheat or lag compensation added.
+- Accepted-shot RPC alone triggers existing first-person recoil/flash/tracer and
+  confirmed owner crosshair, separate world tracer/kick and one nonspatial owner or
+  spatial observer sound using the assigned gun clip. Weapon gameplay stays disabled;
+  world visuals contain no damage or attack components. Host follows the same RPC path.
+- Tuning stays in GunPrototype hero/weapon assets and GunslingerAbilities.asset.
+  Network Respawn Delay is on NetworkPrototypePlayer in the network player prefab;
+  spawn configuration remains on Network Prototype Session. Setup reuses the existing
+  component/prefab and now validates the catalog gun/passive definition. No scene or
+  prefab YAML edits, new networking package or project-setting changes were needed.
+- Completed: Runtime compilation in Editor/development/release plus separate Editor;
+  41 network policy/combat/health checks in each configuration; existing 33 Gunslinger,
+  44 heat and 16 camera checks. Isolated native Unity import/NGO IL processing plus
+  37 single-host setup/lifecycle/combat assertions passed (including wall, killing-hit
+  actual lifesteal, death/respawn, duplicate/invalid/stale RPCs and host effects).
+  Isolated native checks use the existing cached Transport 2.6.0 validation project;
+  standalone compilation uses the main project's installed assemblies (lockfile 2.7.4).
+  The existing unrelated UnityEditor.Search startup indexing exception was logged.
+- MULTIPLAYER_TEST.md contains current protocol, tuning/setup/build steps and the
+  pending eight-part manual two-instance combat/offline checklist. No new game build,
+  two-instance network combat, graphical/input/audio or offline gameplay testing was
+  performed by the agent. Reports remain in chat only; no session report file created.

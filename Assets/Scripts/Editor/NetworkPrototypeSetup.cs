@@ -138,6 +138,11 @@ public static class NetworkPrototypeSetup
             prefab.GetComponentsInChildren<AudioListener>(true).Any(listener => listener.enabled) ||
             prefab.GetComponentsInChildren<Weapon>(true).Length != 0)
             throw new InvalidOperationException("Network player prefab must start with inert local input/cameras/lifecycle and no scene weapons.");
-        Debug.Log("Network catalog/prefab validation passed; this is not a two-instance gameplay test.");
+        HeroDefinition gunslinger = sessions[0].ResolveHero("prototype.gun");
+        if (gunslinger == null || !(gunslinger.KitPrefab.PrimaryWeapon is HitscanGun) ||
+            !(gunslinger.KitPrefab.PrimaryWeapon.Definition is GunWeaponDefinition) ||
+            gunslinger.PassivePrefab == null || gunslinger.PassivePrefab.GetComponent<GunslingerLifesteal>()?.Definition == null)
+            throw new InvalidOperationException("Online revolver needs the catalog Gunslinger gun and lifesteal definitions.");
+        Debug.Log("Network catalog/prefab/combat validation passed; this is not a two-instance gameplay test.");
     }
 }

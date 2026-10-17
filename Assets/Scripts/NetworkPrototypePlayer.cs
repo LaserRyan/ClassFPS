@@ -3,10 +3,10 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// This milestone replicates presentation and owner movement only. No combat RPCs.
+// Owner movement, server-owned hero identity, combat and lifecycle.
 [RequireComponent(typeof(NetworkObject), typeof(HeroSelection))]
 [DefaultExecutionOrder(-100)]
-public sealed class NetworkPrototypePlayer : NetworkBehaviour
+public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
 {
     private readonly NetworkVariable<NetworkHeroState> hero = new NetworkVariable<NetworkHeroState>();
     private readonly NetworkVariable<NetworkPlayerPose> pose = new NetworkVariable<NetworkPlayerPose>(default,
@@ -29,6 +29,9 @@ public sealed class NetworkPrototypePlayer : NetworkBehaviour
 
     private void Awake()
     {
+        actorColliders = GetComponentsInChildren<Collider>(true);
+        colliderDefaults = new bool[actorColliders.Length];
+        for (int i = 0; i < actorColliders.Length; i++) colliderDefaults[i] = actorColliders[i].enabled;
         movement = GetComponent<FPSController>();
         selection = GetComponent<HeroSelection>();
         health = GetComponent<PlayerHealth>();
@@ -53,6 +56,7 @@ public sealed class NetworkPrototypePlayer : NetworkBehaviour
         }
         movement.SetLocalInputOwnership(IsOwner);
         hero.OnValueChanged += OnHeroChanged;
+        combatState.OnValueChanged += OnCombatChanged;
         ApplyHero(hero.Value);
         SetLocalComponents(IsOwner);
         if (IsOwner)
@@ -83,11 +87,19 @@ public sealed class NetworkPrototypePlayer : NetworkBehaviour
         GetComponent<BurnStatus>()?.Clear();
         selection.ApplyNetworkHero(definition, IsOwner, state.Spawn, Quaternion.Euler(0f, state.Yaw, 0f));
         appliedRevision = state.Revision;
+        if (worldShotAudio != null) worldShotAudio.Stop();
+        fireRequiresRelease = true;
+        requestSequence = 0;
+        nextFireIntent = 0;
+        if (IsServer) ResetServerCombat();
+        ApplyCombatSnapshot();
         if (IsOwner) PublishPose();
     }
     private void Update()
     {
-        if (!IsSpawned || !IsOwner) return;
+        if (!IsSpawned) return;
+        if (IsServer) TickServerCombat();
+        if (!IsOwner) return;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (testChangesAllowed.Value && Keyboard.current != null && Keyboard.current.f6Key.wasPressedThisFrame)
         {
@@ -107,11 +119,13 @@ public sealed class NetworkPrototypePlayer : NetworkBehaviour
         if (!IsSpawned || appliedRevision == 0) return;
         if (IsOwner)
         {
-            if (Time.unscaledTime >= nextPoseAt && !pendingChange)
+            ReadCombatInput();
+            if (Time.unscaledTime >= nextPoseAt && !pendingChange && !combatState.Value.Dead)
             { PublishPose(); nextPoseAt = Time.unscaledTime + 1f / 30f; }
         }
         else
         {
+            if (combatState.Value.Dead) return;
             NetworkPlayerPose target = pose.Value;
             // A respawn revision prevents old movement from undoing the server's spawn.
             if (target.Revision != appliedRevision || !target.IsFinite) return;
@@ -190,6 +204,9 @@ public sealed class NetworkPrototypePlayer : NetworkBehaviour
     }
     private void OnGUI()
     {
+        if (IsSpawned && IsOwner && combatState.Value.Dead)
+            GUI.Box(new Rect(Screen.width * .5f - 180, Screen.height * .5f - 50, 360, 100),
+                $"You died\nRespawning in {Mathf.CeilToInt((float)System.Math.Max(0, combatState.Value.RespawnAt - NetworkManager.ServerTime.Time))}s");
         if (!IsSpawned || !IsOwner || !testMenu || !NetworkTestRules.DevelopmentFeatures) return;
         GUILayout.BeginArea(new Rect(20f, 140f, 380f, Mathf.Min(420f, Screen.height - 150f)), GUI.skin.box);
         GUILayout.Label("Development test hero change (respawns player)");
@@ -206,6 +223,8 @@ public sealed class NetworkPrototypePlayer : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         hero.OnValueChanged -= OnHeroChanged;
+        combatState.OnValueChanged -= OnCombatChanged;
+        if (worldShotAudio != null) worldShotAudio.Stop();
         if (IsOwner)
         {
             movement.enabled = false;

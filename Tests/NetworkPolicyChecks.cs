@@ -36,6 +36,38 @@ public static class NetworkPolicyChecks
         Check(health.TakeDamage(25f), "offline damage preserved");
         Check(health.Heal(10f), "offline healing preserved");
         Check(health.RestoreFullHealth(), "offline restore preserved");
+        var gun = new NetworkRevolverState();
+        gun.Reset(3, 2);
+        Check(!gun.Request(2, 1, 0, true), "old life request rejected");
+        Check(!gun.Request(3, 1, 0, false), "non-owner combat rejected");
+        Check(gun.Request(3, 1, 0, true), "fresh owner request");
+        Check(!gun.Request(3, 1, 1, true), "duplicate sequence rejected");
+        Check(gun.Fire(0, .4f, 2, 1.5f, true) && gun.Ammo == 1, "accepted fire consumes once");
+        Check(!gun.Fire(.2, .4f, 2, 1.5f, true) && gun.Ammo == 1, "cooldown rejects without spending");
+        Check(gun.Fire(.5, .4f, 2, 1.5f, true) && gun.Ammo == 0 && gun.ReloadAt == 2, "empty starts automatic reload");
+        Check(!gun.Fire(1, .4f, 2, 1.5f, true), "reload blocks fire");
+        gun.Tick(1.99, 2);
+        Check(gun.Ammo == 0, "reload cannot finish early");
+        gun.Tick(2, 2);
+        Check(gun.Ammo == 2 && gun.ReloadAt == 0, "reload deadline refills");
+        Check(gun.Request(3, 2, 3, true) && !gun.Request(3, 3, 3.001, true), "request flood gate");
+        Check(gun.Die(4, 3) && !gun.Die(5, 3) && gun.RespawnAt == 7, "death enters once without extending timer");
+        Check(!gun.Request(3, 4, 6, true) && !gun.Fire(6, 0, 2, 1, true), "dead attacker rejected");
+        gun.Reset(4, 6);
+        Check(!gun.Dead && gun.Ammo == 6 && gun.ReloadAt == 0, "respawn/hero change resets resources and timer");
+        Check(!gun.Request(3, 999, 8, true) && gun.Request(4, 1, 8, true), "old life cannot poison new sequence");
+        Check(!gun.Reload(8, 6, 1), "full magazine rejects reload");
+        Check(gun.Fire(8, .4f, 6, 1, false) && gun.Reload(8.5, 6, 1), "manual reload accepted after spending");
+        Check(!gun.Reload(8.6, 6, 1) && gun.ReloadAt == 9.5, "repeated reload cannot restart timer");
+        float actual = NetworkRevolverState.ActualDamage(10, 25);
+        Check(actual == 10 && GunslingerRules.Healing(actual, 15, 50, 100, true, false) == 1.5f, "network killing hit heals actual remaining health");
+        Check(NetworkRevolverState.ActualDamage(100, float.Epsilon) == 0, "unrepresentable damage yields zero");
+        Check(NetworkRevolverState.ActualDamage(0, 25) == 0 && NetworkRevolverState.ActualDamage(10, float.NaN) == 0, "dead/invalid damage yields zero");
+        Check(GunslingerRules.Healing(25, 15, 99, 100, true, false) == 1, "network lifesteal clamps at full");
+        Check(GunslingerRules.Healing(25, 15, 0, 100, false, false) == 0, "network lifesteal never revives");
+        health.NetworkProtected = true;
+        health.ApplyNetworkSnapshot(20, 120);
+        Check(health.CurrentHealth == 20 && health.MaximumHealth == 120, "replica updates through normal health state");
         Console.WriteLine(checks + " network policy checks passed (development features: " + dev + ").");
     }
 }

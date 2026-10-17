@@ -120,7 +120,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     }
     private void Connected(ulong clientId)
     {
-        if (clientId == manager.LocalClientId) { connecting = false; message = "Connected. Combat and abilities are disabled."; }
+        if (clientId == manager.LocalClientId) { connecting = false; message = "Connected. Gunslinger primary online; other attacks and abilities disabled."; }
         if (!manager.IsServer) return;
         if (!approved.TryGetValue(clientId, out HeroDefinition hero))
         { manager.DisconnectClient(clientId, "Missing approved hero."); return; }
@@ -208,7 +208,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
         }
         else if (networkActive)
         {
-            GUILayout.Label("Local multiplayer prototype — movement only");
+            GUILayout.Label("Local multiplayer: server revolver combat");
             GUILayout.Label("Escape: cursor | F6: development hero test (if enabled)");
             if (GUILayout.Button("Disconnect / Cancel")) Disconnect();
         }

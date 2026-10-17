@@ -11,6 +11,9 @@ public sealed class WeaponAmmo : MonoBehaviour
     private int currentAmmo;
     private bool initialized;
     private float reloadAt;
+    public bool NetworkDriven { get; set; }
+    internal void ApplyNetworkSnapshot(int rounds, bool reloading)
+    { NetworkDriven = true; currentAmmo = rounds; initialized = true; IsReloading = reloading; Changed?.Invoke(); }
     public GunWeaponDefinition Definition => GetComponent<Weapon>()?.Definition as GunWeaponDefinition;
     public int Capacity => Definition != null ? Definition.MagazineCapacity : Mathf.Max(1, magazineCapacity);
     public float ReloadDuration => Definition != null ? Definition.ReloadDuration : Mathf.Max(0.01f, reloadDuration);
@@ -59,7 +62,7 @@ public sealed class WeaponAmmo : MonoBehaviour
 
     private void Update()
     {
-        if (IsReloading && Time.time >= reloadAt)
+        if (!NetworkDriven && IsReloading && Time.time >= reloadAt)
             Refill();
     }
 

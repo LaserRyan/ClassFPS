@@ -9,6 +9,11 @@ public sealed class HitscanGun : Weapon
     // Presentation-only notification. The shared weapon base stays independent of guns.
     public event System.Action<Vector3> ShotFired;
     public event System.Action<Transform, IDamageable, float> HealthDamageDealt;
+    // Accepted server shot presentation only: never executes a local ray or damage.
+    internal void PresentNetworkShot(Vector3 endpoint, bool hit)
+    { ReportAttack(hit); ShotFired?.Invoke(endpoint); }
+    public LayerMask HitLayers => hitLayers;
+    public bool NetworkPresentation { get; set; }
     private void OnDisable() => Ammo?.CancelReload();
 
     public override void PrimaryAttack(WeaponAttackContext context)

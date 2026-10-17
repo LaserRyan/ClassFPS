@@ -81,6 +81,7 @@ public static class NetworkPrototypeBatchChecks
                 Check(player.GetComponentsInChildren<HeroSecondary>(true).Length == 0 &&
                     player.GetComponentsInChildren<HeroPassive>(true).Length == 0, "No online abilities/passives.");
                 Check(!player.GetComponent<PlayerHealth>().TakeDamage(1000f), "Offline damage cannot affect a network player.");
+                RunCombatChecks(player, session);
                 expectedHero = session.Heroes.First(h => h.HeroId != player.CurrentHeroId).HeroId;
                 typeof(NetworkPrototypePlayer).GetMethod("SetTestMenu", BindingFlags.Instance | BindingFlags.NonPublic)
                     .Invoke(player, new object[] { true });
@@ -150,6 +151,70 @@ public static class NetworkPrototypeBatchChecks
             }
         }
         catch (Exception error) { Debug.LogException(error); Finish(1); }
+    }
+    private static object Call(NetworkPrototypePlayer player, string method, params object[] arguments) =>
+        typeof(NetworkPrototypePlayer).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(player, arguments);
+    private static void RunCombatChecks(NetworkPrototypePlayer shooter, NetworkPrototypeSession session)
+    {
+        Check(shooter.CurrentHeroId == "prototype.gun", "Native combat check starts with Gunslinger.");
+        NetworkPrototypePlayer prefab = AssetDatabase.LoadAssetAtPath<NetworkPrototypePlayer>(NetworkPrototypeSetup.PrefabPath);
+        NetworkPrototypePlayer target = UnityEngine.Object.Instantiate(prefab);
+        GameObject wall = null;
+        try
+        {
+            target.InitializeServer(session.ResolveHero("prototype.fire"), new Vector3(-20, 1, -16), 0, false);
+            target.NetworkObject.Spawn();
+            // A second server-owned actor is a test fixture, not an extra local controller/view.
+            Call(target, "SetLocalComponents", false);
+            target.GetComponent<FPSController>().SetLocalInputOwnership(false);
+            session.LocalPlayer = shooter;
+            shooter.GetComponent<FPSController>().ResetAtSpawn(new Vector3(-20, 1, -20), Quaternion.identity);
+            var heroVariable = (NetworkVariable<NetworkHeroState>)typeof(NetworkPrototypePlayer)
+                .GetField("hero", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(shooter);
+            uint generation = heroVariable.Value.Revision;
+            HitscanGun gun = shooter.GetComponent<HeroSelection>().SelectedKit.PrimaryWeapon as HitscanGun;
+            int effects = 0;
+            gun.ShotFired += endpoint => effects++;
+            int initialAmmo = gun.Ammo.CurrentAmmo;
+            float initialTargetHealth = target.GetComponent<PlayerHealth>().CurrentHealth;
+            wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.transform.position = new Vector3(-20, 2, -18);
+            wall.transform.localScale = new Vector3(2, 4, .3f);
+            Call(shooter, "RevolverIntentRpc", generation, 1u, Vector3.forward, false, default(RpcParams));
+            Check(target.GetComponent<PlayerHealth>().CurrentHealth == initialTargetHealth, "Server wall blocks damage.");
+            Check(gun.Ammo.CurrentAmmo == initialAmmo - 1 && effects == 1, "Host accepted shot consumes once and presents once.");
+            Call(shooter, "RevolverIntentRpc", generation, 1u, Vector3.forward, false, default(RpcParams));
+            Call(shooter, "RevolverIntentRpc", generation, 2u, Vector3.forward, false, default(RpcParams));
+            Check(gun.Ammo.CurrentAmmo == initialAmmo - 1 && effects == 1, "Duplicate/flood/cooldown requests cannot shoot twice.");
+            UnityEngine.Object.DestroyImmediate(wall); wall = null;
+            Call(shooter, "ResetServerCombat");
+            Call(shooter, "RevolverIntentRpc", generation, 1u, new Vector3(float.NaN, 0, 1), false, default(RpcParams));
+            Check(gun.Ammo.CurrentAmmo == initialAmmo, "Non-finite aim does not consume ammo.");
+            Call(shooter, "ResetServerCombat");
+            Call(shooter, "ServerDamage", shooter.GetComponent<PlayerHealth>().MaximumHealth - 50);
+            Call(target, "ServerDamage", initialTargetHealth - 10);
+            typeof(NetworkPrototypePlayer).GetField("networkRespawnDelay", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, 0f);
+            Call(shooter, "RevolverIntentRpc", generation, 1u, Vector3.forward, false, default(RpcParams));
+            Check(target.GetComponent<PlayerHealth>().CurrentHealth == 0, "Server hitscan kills a different hero.");
+            Check(Mathf.Abs(shooter.GetComponent<PlayerHealth>().CurrentHealth - 51.5f) < .001f, "Network killing-hit lifesteal uses actual ten health removed.");
+            Check(!target.GetComponent<CharacterController>().enabled, "Dead actor collider disabled.");
+            Check(!target.GetComponent<FPSController>().CanAcceptGameplayInput, "Dead actor cannot accept movement input.");
+            Check((float)Call(target, "ServerDamage", 25f) == 0, "Duplicate death damage rejected.");
+            Call(target, "TickServerCombat");
+            Check(target.GetComponent<PlayerHealth>().CurrentHealth == initialTargetHealth && target.GetComponent<CharacterController>().enabled,
+                "Server deadline respawns and restores health/collider.");
+            Check(target.GetComponent<HeroSelection>().SelectedHero.HeroId == "prototype.fire", "Death keeps selected hero.");
+            Call(shooter, "ResetServerCombat");
+            Call(shooter, "RevolverIntentRpc", generation - 1, 500u, Vector3.forward, false, default(RpcParams));
+            Check(gun.Ammo.CurrentAmmo == initialAmmo, "Stale life fire rejected through real RPC.");
+        }
+        finally
+        {
+            if (wall != null) UnityEngine.Object.DestroyImmediate(wall);
+            if (target != null && target.IsSpawned) target.NetworkObject.Despawn(true);
+            session.LocalPlayer = shooter;
+            shooter.GetComponent<FPSController>().ResetAtSpawn(session.SpawnFor(shooter.OwnerClientId), Quaternion.Euler(0, session.SpawnYaw, 0));
+        }
     }
     private static void Finish(int result)
     {

@@ -67,7 +67,7 @@ public sealed class GunPresentation : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (gun == null || !gun.isActiveAndEnabled)
+        if (gun == null || (!gun.isActiveAndEnabled && !gun.NetworkPresentation))
         {
             ResetPresentation();
             return;

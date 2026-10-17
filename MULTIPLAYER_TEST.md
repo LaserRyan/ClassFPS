@@ -22,7 +22,8 @@ Unknown IDs are rejected at approval and in change requests. Both peers must hav
 same configured catalog/assets and test scene; NGO scene management is intentionally off.
 
 Movement is owner-authoritative: each owner publishes position, yaw and pitch at up
-to 30 Hz; observers smooth position/yaw and apply world-weapon pitch. Movement is
+to 30 Hz. Received collision roots use the newest valid pose immediately; observers
+smooth only the world model's position/yaw and apply world-weapon pitch. Movement is
 trusted, with no server collision validation, prediction, reconciliation or anti-cheat.
 A server-written hero revision groups identity and spawn pose atomically; owner poses
 carry that revision, so old movement cannot undo a hero-change respawn. Replicated
@@ -219,11 +220,13 @@ remain a manual check; native assertions test the capture predicate and handler 
 - Respawn delay: **Network Respawn Delay** on `NetworkPrototypePlayer` in
   `Assets/Prefabs/Network/NetworkPlayer.prefab`, default 3 seconds. Spawn origin/yaw/
   spacing remain on Network Prototype Session. All mutable values live on actors.
-- Requests contain generation, increasing sequence, normalized aim direction and
-  fire/reload intent. Server checks owner/sender, generation, sequence/flood budget,
+- Requests contain generation, increasing request sequence, the matching sequenced
+  owner body pose, normalized aim direction and fire/reload intent. Server checks
+  owner/sender, generation, sequence/flood budget,
   selected catalog gun, alive state, finite normalized aim, cooldown/ammo/reload.
-  It uses its own camera-local eye offset and player position, ignores shooter and
-  dead colliders, and selects the closest blocking surface. Offline targets/bots
+  It derives the ray from the matching owner-authoritative body movement sample and
+  its own camera-local eye offset, ignores shooter/dead colliders, and selects the
+  closest blocking surface. Clients cannot submit an independent eye origin. Offline targets/bots
   are blocking surfaces, not networked damage recipients in this milestone.
 - Server actual damage is the representable health removed, capped at remaining
   health. Selected passive healing uses that value, clamps at maximum and cannot
@@ -237,7 +240,8 @@ remain a manual check; native assertions test the capture predicate and handler 
   rate and configured cooldown. Rejected attempts are not queued or predicted.
   Release/focus/menu/capture/death gates require button release before resuming.
   Host uses the same generated owner-to-server RPC and receives one accepted-shot
-  notification. No client-supplied origin, damage, target or hit result is used.
+  notification. No client-supplied eye offset, damage, target or hit result is used.
+  Body position remains owner-authoritative, exactly as ordinary movement.
 
 ## Manual combat checklist (two instances, not agent-verified)
 
@@ -294,3 +298,54 @@ the connection panel to recapture, then release MB1 before firing.
 No standalone build or manual two-instance combat, rendered effects, spatial-audio
 listening, keyboard/mouse behavior or full offline regression was run for this change.
 The checklist above is required before treating this milestone as gameplay-verified.
+
+
+## Moving-client shot timing correction (2026-10-17)
+
+The previous implementation smoothed the remote player's collision root on the server
+and sent fire intent before the next movement update. This could fire from a position
+behind the owner's screen even when both peers were running on localhost.
+
+- Each accepted shot carries the body pose and aim sampled together after local
+  movement/look. The same sample is published as ordinary movement before sending
+  the fire RPC. The RPC contains the pose so delivery order/coalescing cannot separate
+  a shot from its movement frame. The server derives the eye offset from its prefab.
+- Movement snapshots carry a per-life increasing sequence. The collision root applies
+  newer finite poses immediately; older/duplicate/dead/incorrect-life poses are ignored.
+  A shot carrying an older sample can still be evaluated from that sample without
+  rolling the actor's newer collision position backward. Previously accepted shot
+  samples cannot be reused for a later shot. Respawn/hero change reset all order state.
+- Smooth motion applies to the collider-free world presentation only, including on
+  the host. It retains its old visual pose when the collision root updates, then
+  approaches the newest position/yaw. Camera ownership and first-person visibility
+  remain unchanged. Death/respawn retain their revision and input protections.
+- This preserves the prototype's trusted owner movement. A movement body position is
+  not anti-cheat validated; clients still cannot choose damage/hits/ammo/eye offsets.
+  Historical target rewind, client prediction and authoritative movement are not added.
+  Moving-target disagreements caused by visual/network latency remain possible.
+- Both peers need the new code: **stop Play mode, allow import, rebuild the standalone
+  executable, and restart both sessions**. The pose/RPC wire format changed; do not
+  connect the old executable to the updated Editor. No scene setup, assets, packages
+  or project-setting changes are required.
+
+Focused manual retest (pending): shoot a stationary player from the standalone client
+while strafing left/right, moving forward/backward, jumping and stepping around cover.
+Repeat with roles reversed. Check closest walls still block, held fire/reload stay gated,
+remote bodies remain smooth, dead actors cannot move/fire, and repeated death/F6 hero
+changes/reconnects never apply an old pose or shot. Then test a moving target separately;
+this correction does not compensate for target history. Observe recoil/audio/visibility
+in both windows and recheck offline heroes before declaring gameplay validation complete.
+
+
+Automated validation for this correction: Runtime Editor/development/release and
+separate Editor compilation passed; **51 policy checks per configuration** (153 total),
+**33 Gunslinger + 44 heat + 16 camera checks**, and **45 isolated native host assertions**
+passed. Added coverage includes exact shot origin versus a delayed server shooter,
+non-finite/mismatched-life shot bodies, immediate collision pose application, preserved
+visual position/smoothing, and out-of-order/life pose rejection. The native non-owner
+branch uses a reflection-controlled ownership fixture, not a connected remote client.
+The isolated project still uses cached Transport 2.6.0; main compilation uses installed
+project assemblies. Its known unrelated UnityEditor.Search startup exception remains.
+No two-instance test, executable build, graphical/input/audio or offline gameplay test
+was performed for this correction. Also inspect player-to-player contact for visible
+collision jitter now that collision roots update independently from the rendered model.

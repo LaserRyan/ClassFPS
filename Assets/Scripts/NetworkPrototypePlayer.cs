@@ -17,6 +17,11 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
     private PlayerHealth health;
     private uint appliedRevision;
     private float nextPoseAt;
+    private uint poseSequence;
+    private readonly NetworkPoseOrder poseOrder = new NetworkPoseOrder();
+    private Vector3 visualPosition, worldRestPosition;
+    private Quaternion visualRotation, worldRestRotation;
+    private float remotePitch;
     private bool testMenu;
     private bool pendingChange;
     private bool serverChanging;
@@ -56,6 +61,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         }
         movement.SetLocalInputOwnership(IsOwner);
         hero.OnValueChanged += OnHeroChanged;
+        pose.OnValueChanged += OnPoseChanged;
         combatState.OnValueChanged += OnCombatChanged;
         ApplyHero(hero.Value);
         SetLocalComponents(IsOwner);
@@ -87,6 +93,17 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         GetComponent<BurnStatus>()?.Clear();
         selection.ApplyNetworkHero(definition, IsOwner, state.Spawn, Quaternion.Euler(0f, state.Yaw, 0f));
         appliedRevision = state.Revision;
+        poseSequence = 0;
+        poseOrder.Reset(appliedRevision);
+        remotePitch = 0;
+        if (selection.SelectedWorldPresentation != null)
+        {
+            Transform world = selection.SelectedWorldPresentation.transform;
+            worldRestPosition = world.localPosition;
+            worldRestRotation = world.localRotation;
+            visualPosition = world.position;
+            visualRotation = world.rotation;
+        }
         if (worldShotAudio != null) worldShotAudio.Stop();
         fireRequiresRelease = true;
         requestSequence = 0;
@@ -94,6 +111,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         if (IsServer) ResetServerCombat();
         ApplyCombatSnapshot();
         if (IsOwner) PublishPose();
+        else ApplyRemotePose(pose.Value);
     }
     private void Update()
     {
@@ -125,20 +143,37 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         }
         else
         {
-            if (combatState.Value.Dead) return;
-            NetworkPlayerPose target = pose.Value;
-            // A respawn revision prevents old movement from undoing the server's spawn.
-            if (target.Revision != appliedRevision || !target.IsFinite) return;
-            float blend = 1f - Mathf.Exp(-18f * Time.unscaledDeltaTime);
-            transform.SetPositionAndRotation(Vector3.Lerp(transform.position, target.Position, blend),
-                Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, target.Yaw, 0f), blend));
-            selection.SelectedWorldPresentation?.SetAimPitch(target.Pitch);
+            ApplyRemotePose(pose.Value);
+            SmoothRemotePresentation();
         }
     }
-    private void PublishPose()
+    private NetworkPlayerPose CapturePose() => new NetworkPlayerPose
     {
-        pose.Value = new NetworkPlayerPose { Position = transform.position, Yaw = transform.eulerAngles.y,
-            Pitch = Mathf.DeltaAngle(0f, movement.PlayerCamera.transform.localEulerAngles.x), Revision = appliedRevision };
+        Position = transform.position, Yaw = transform.eulerAngles.y,
+        Pitch = Mathf.DeltaAngle(0f, movement.PlayerCamera.transform.localEulerAngles.x),
+        Revision = appliedRevision, Sequence = ++poseSequence
+    };
+    private void PublishPose() => pose.Value = CapturePose();
+    private void OnPoseChanged(NetworkPlayerPose previous, NetworkPlayerPose current) => ApplyRemotePose(current);
+    private void ApplyRemotePose(NetworkPlayerPose target)
+    {
+        if (IsOwner || !poseOrder.TryAccept(target.Revision, target.Sequence, target.IsFinite,
+            appliedRevision != 0 && !combatState.Value.Dead)) return;
+        // Collision/combat transforms never chase a visually smoothed position.
+        transform.SetPositionAndRotation(target.Position, Quaternion.Euler(0f, target.Yaw, 0f));
+        remotePitch = target.Pitch;
+        if (selection.SelectedWorldPresentation != null)
+            selection.SelectedWorldPresentation.transform.SetPositionAndRotation(visualPosition, visualRotation);
+    }
+    private void SmoothRemotePresentation()
+    {
+        WorldHeroPresentation world = selection.SelectedWorldPresentation;
+        if (world == null) return;
+        float blend = 1f - Mathf.Exp(-18f * Time.unscaledDeltaTime);
+        visualPosition = Vector3.Lerp(visualPosition, transform.TransformPoint(worldRestPosition), blend);
+        visualRotation = Quaternion.Slerp(visualRotation, transform.rotation * worldRestRotation, blend);
+        world.transform.SetPositionAndRotation(visualPosition, visualRotation);
+        world.SetAimPitch(remotePitch);
     }
     private void SetTestMenu(bool open)
     {
@@ -223,6 +258,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         hero.OnValueChanged -= OnHeroChanged;
+        pose.OnValueChanged -= OnPoseChanged;
         combatState.OnValueChanged -= OnCombatChanged;
         if (worldShotAudio != null) worldShotAudio.Stop();
         if (IsOwner)

@@ -681,3 +681,36 @@ This supersedes earlier statements that all online combat is disabled.
   pending eight-part manual two-instance combat/offline checklist. No new game build,
   two-instance network combat, graphical/input/audio or offline gameplay testing was
   performed by the agent. Reports remain in chat only; no session report file created.
+
+### Moving-client shot timing fix (2026-10-17)
+
+- User reports standalone non-host hit registration disagreements while moving.
+  Code inspection confirmed server interpolation of the remote collision root and
+  fire intent preceding the next movement snapshot. Native regression now measures
+  a coherent shot origin when the server's shooter copy is deliberately two metres
+  behind the captured shot frame; this is not a completed two-window reproduction.
+- NetworkPlayerPose now includes a per-life sequence. New finite/alive/current-life
+  samples immediately update non-owner collision roots, including on the server.
+  Only collider-free world presentation position/yaw is smoothed. Its visual pose is
+  preserved across root updates, then approaches the latest collision pose.
+- Fire RPC includes its same-frame owner body movement sample and aim. That sample
+  is also published as movement before sending the RPC. Server computes the eye from
+  the body sample plus its own prefab eye offset. Reordered ordinary movement cannot
+  undo a newer shot pose; an older shot sample does not roll the collision root back.
+  Previously accepted shot samples cannot be replayed with a new request sequence.
+  Revision/ordering resets preserve death/hero-change/respawn protections.
+- This uses the already trusted owner movement policy, not authoritative movement
+  validation. No independent client eye origin, hit results or damage are accepted.
+  No target rewind, movement anti-cheat, networking package or scene/settings edits.
+  Moving-target disagreement from network/display latency remains a known limit.
+- Completed: Runtime Editor/development/release and separate Editor compilation;
+  51 policy/order/combat checks in each configuration; existing 33 Gunslinger, 44
+  heat and 16 visibility checks; isolated native Unity import/NGO IL processing and
+  45 single-host assertions. Native non-owner pose branch uses a reflection-controlled
+  ownership fixture; it is not a real remote client/wire validation. Cached native
+  Transport remains 2.6.0; main installed compilation uses current project assemblies.
+  The known unrelated UnityEditor.Search indexing exception still logs at startup.
+- MULTIPLAYER_TEST.md documents the updated protocol and focused moving-shot retest.
+  Rebuild the executable and restart both peers: pose/RPC wire formats changed.
+  No new standalone build, two-window combat, interactive/graphical/audio or offline
+  gameplay validation performed by the agent. Chat-only reporting preference retained.

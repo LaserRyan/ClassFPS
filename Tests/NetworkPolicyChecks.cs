@@ -68,6 +68,20 @@ public static class NetworkPolicyChecks
         health.NetworkProtected = true;
         health.ApplyNetworkSnapshot(20, 120);
         Check(health.CurrentHealth == 20 && health.MaximumHealth == 120, "replica updates through normal health state");
+        var ordering = new NetworkPoseOrder();
+        ordering.Reset(4);
+        Check(ordering.TryAccept(4, 2, true, true), "newest pose accepted without render delay");
+        Check(!ordering.TryAccept(4, 1, true, true), "older movement cannot undo a shot pose");
+        Check(!ordering.TryAccept(4, 2, true, true), "duplicate pose ignored");
+        Check(!ordering.TryAccept(3, 1000, true, true), "old-life movement rejected");
+        Check(!ordering.TryAccept(5, 1000, true, true), "future-life movement waits for server revision");
+        Check(!ordering.TryAccept(4, 3, false, true) && ordering.LastSequence == 2, "invalid pose does not poison ordering");
+        Check(!ordering.TryAccept(4, 3, true, false), "dead actor cannot advance pose");
+        Check(!ordering.TryAccept(4, 0, true, true), "uninitialized pose rejected");
+        ordering.Reset(5);
+        Check(ordering.TryAccept(5, 1, true, true), "new life accepts restarted sequence");
+        Check(!ordering.TryAccept(4, uint.MaxValue, true, true) && ordering.LastSequence == 1,
+            "old life cannot undo respawn or poison fresh movement");
         Console.WriteLine(checks + " network policy checks passed (development features: " + dev + ").");
     }
 }

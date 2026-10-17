@@ -10,16 +10,19 @@ public sealed partial class NetworkPrototypePlayer
     private readonly NetworkRevolverState revolver = new NetworkRevolverState();
     private bool fireRequiresRelease = true;
     private uint requestSequence;
+    private uint lastFirePoseSequence;
     private float nextFireIntent;
     private AudioSource worldShotAudio;
     private Collider[] actorColliders;
     private bool[] colliderDefaults;
+    internal Vector3 LastServerShotOrigin { get; private set; }
     private double ServerNow => NetworkManager.ServerTime.Time;
     private GunWeaponDefinition ServerGun => selection.SelectedHero != null && CurrentHeroId == "prototype.gun" ?
         selection.SelectedHero.KitPrefab.PrimaryWeapon.Definition as GunWeaponDefinition : null;
 
     private void ResetServerCombat()
     {
+        lastFirePoseSequence = 0;
         GunWeaponDefinition gun = ServerGun;
         revolver.Reset(hero.Value.Revision, gun != null ? gun.MagazineCapacity : 0);
         combatState.Value = new NetworkCombatSnapshot { Generation = hero.Value.Revision,
@@ -79,12 +82,15 @@ public sealed partial class NetworkPrototypePlayer
         { fireRequiresRelease = held; return; }
         if (!held) fireRequiresRelease = false;
         if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
-            RevolverIntentRpc(appliedRevision, ++requestSequence, Vector3.forward, true);
+            RevolverIntentRpc(appliedRevision, ++requestSequence, CapturePose(), Vector3.forward, true);
         if (held && !fireRequiresRelease && Time.unscaledTime >= nextFireIntent)
         {
             // No prediction, buffering or local ammo consumption. Server accepts each shot.
             nextFireIntent = Time.unscaledTime + .05f;
-            RevolverIntentRpc(appliedRevision, ++requestSequence, movement.PlayerCamera.transform.forward, false);
+            NetworkPlayerPose shotPose = CapturePose();
+            pose.Value = shotPose;
+            nextPoseAt = Time.unscaledTime + 1f / 30f;
+            RevolverIntentRpc(appliedRevision, ++requestSequence, shotPose, movement.PlayerCamera.transform.forward, false);
         }
     }
     private static bool ValidAim(Vector3 aim) => !float.IsNaN(aim.x) && !float.IsNaN(aim.y) && !float.IsNaN(aim.z) &&
@@ -92,19 +98,27 @@ public sealed partial class NetworkPrototypePlayer
         aim.sqrMagnitude > .9f && aim.sqrMagnitude < 1.1f;
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-    private void RevolverIntentRpc(uint generation, uint sequence, Vector3 aim, bool reload, RpcParams rpc = default)
+    private void RevolverIntentRpc(uint generation, uint sequence, NetworkPlayerPose shotPose, Vector3 aim, bool reload, RpcParams rpc = default)
     {
         if (!revolver.Request(generation, sequence, ServerNow, rpc.Receive.SenderClientId == OwnerClientId)) return;
         GunWeaponDefinition gun = ServerGun;
-        if (gun == null || combatState.Value.Dead || !ValidAim(aim)) return;
+        if (gun == null || combatState.Value.Dead || !ValidAim(aim) || !shotPose.IsFinite ||
+            shotPose.Revision != generation || shotPose.Sequence == 0 ||
+            (!reload && shotPose.Sequence <= lastFirePoseSequence)) return;
         if (reload)
         { revolver.Reload(ServerNow, gun.MagazineCapacity, gun.ReloadDuration); PublishCombat(); return; }
         if (!revolver.Fire(ServerNow, gun.Cooldown, gun.MagazineCapacity, gun.ReloadDuration, gun.AutomaticReload))
         { PublishCombat(); return; }
+        lastFirePoseSequence = shotPose.Sequence;
         PublishCombat();
+        // Same-frame body pose follows the existing owner-authoritative movement policy.
+        // It may arrive after a newer ordinary pose: never roll collision state backwards.
+        ApplyRemotePose(shotPose);
         Physics.SyncTransforms();
-        // Eye offset comes from the server prefab, never a caller-supplied ray origin.
-        Vector3 origin = transform.TransformPoint(movement.PlayerCamera.transform.localPosition);
+        // Server supplies the eye offset; the owner supplies body movement, never an eye origin.
+        Vector3 origin = shotPose.Position + Quaternion.Euler(0f, shotPose.Yaw, 0f) *
+            movement.PlayerCamera.transform.localPosition;
+        LastServerShotOrigin = origin;
         Ray ray = new Ray(origin, aim.normalized);
         HitscanGun source = selection.SelectedHero.KitPrefab.PrimaryWeapon as HitscanGun;
         RaycastHit[] hits = Physics.RaycastAll(ray, gun.Range, source.HitLayers, QueryTriggerInteraction.Ignore);

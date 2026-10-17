@@ -45,3 +45,18 @@ public sealed class NetworkRevolverState
     public bool Die(double now, float delay)
     { if (Dead) return false; Dead = true; ReloadAt = 0; RespawnAt = now + Math.Max(0, delay); return true; }
 }
+
+
+// Orders movement snapshots within a life, independently of packet arrival order.
+public sealed class NetworkPoseOrder
+{
+    public uint Generation { get; private set; }
+    public uint LastSequence { get; private set; }
+    public void Reset(uint generation) { Generation = generation; LastSequence = 0; }
+    public bool TryAccept(uint generation, uint sequence, bool finite, bool alive)
+    {
+        if (!alive || !finite || generation != Generation || sequence == 0 || sequence <= LastSequence) return false;
+        LastSequence = sequence;
+        return true;
+    }
+}

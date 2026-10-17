@@ -26,15 +26,17 @@ public struct NetworkPlayerPose : INetworkSerializable, IEquatable<NetworkPlayer
     public float Yaw;
     public float Pitch;
     public uint Revision;
+    public uint Sequence;
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref Position);
         serializer.SerializeValue(ref Yaw);
         serializer.SerializeValue(ref Pitch);
         serializer.SerializeValue(ref Revision);
+        serializer.SerializeValue(ref Sequence);
     }
     public bool Equals(NetworkPlayerPose other) => Position == other.Position && Yaw == other.Yaw &&
-        Pitch == other.Pitch && Revision == other.Revision;
+        Pitch == other.Pitch && Revision == other.Revision && Sequence == other.Sequence;
     public bool IsFinite => Finite(Position.x) && Finite(Position.y) && Finite(Position.z) && Finite(Yaw) && Finite(Pitch);
     private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 }

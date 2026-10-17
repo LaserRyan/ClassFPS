@@ -141,8 +141,10 @@ public static class NetworkPrototypeSetup
         HeroDefinition gunslinger = sessions[0].ResolveHero("prototype.gun");
         if (gunslinger == null || !(gunslinger.KitPrefab.PrimaryWeapon is HitscanGun) ||
             !(gunslinger.KitPrefab.PrimaryWeapon.Definition is GunWeaponDefinition) ||
-            gunslinger.PassivePrefab == null || gunslinger.PassivePrefab.GetComponent<GunslingerLifesteal>()?.Definition == null)
-            throw new InvalidOperationException("Online revolver needs the catalog Gunslinger gun and lifesteal definitions.");
+            gunslinger.PassivePrefab == null || gunslinger.PassivePrefab.GetComponent<GunslingerLifesteal>()?.Definition == null ||
+            gunslinger.SecondaryActionPrefab == null || gunslinger.SecondaryActionPrefab.GetComponent<GunslingerDash>()?.Definition == null ||
+            gunslinger.SecondaryActionPrefab.GetComponentsInChildren<GunslingerDashHUD>(true).Length != 1)
+            throw new InvalidOperationException("Online Gunslinger needs gun, lifesteal, dash definitions and one dash HUD.");
         Debug.Log("Network catalog/prefab/combat validation passed; this is not a two-instance gameplay test.");
     }
 }

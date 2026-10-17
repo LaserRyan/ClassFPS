@@ -13,6 +13,6 @@ public sealed class GunslingerDashHUD : MonoBehaviour
             movement.GetComponent<PlayerHealth>().CurrentHealth <= 0f) return;
         float remaining = dash.CooldownRemaining;
         GUI.Label(new Rect(Screen.width - 230f, Screen.height - 125f, 220f, 30f),
-            remaining > 0f ? $"Dash [MB2] {remaining:0.0}s" : "Dash [MB2] Ready");
+            dash.NetworkRequestPending ? "Dash [MB2] Waiting for server" : remaining > 0f ? $"Dash [MB2] {remaining:0.0}s" : "Dash [MB2] Ready");
     }
 }

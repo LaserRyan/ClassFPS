@@ -75,7 +75,7 @@ public sealed class HeroSelection : MonoBehaviour
         SelectedKit = kit;
         SelectedHero = hero;
         combat.EquippedWeapon = kit.PrimaryWeapon;
-        if (!network && hero.SecondaryActionPrefab != null)
+        if ((!network || hero.HeroId == "prototype.gun") && hero.SecondaryActionPrefab != null)
         {
             GameObject secondary = Instantiate(hero.SecondaryActionPrefab, kit.transform, false);
             combat.Secondary = secondary.GetComponent<HeroSecondary>();
@@ -103,6 +103,7 @@ public sealed class HeroSelection : MonoBehaviour
             kit.PrimaryWeapon.enabled = false;
             foreach (AudioSource source in kit.GetComponentsInChildren<AudioSource>(true))
             { source.Stop(); source.enabled = false; }
+            if (combat.Secondary is GunslingerDash dash) dash.ConfigureNetwork(owner);
         }
         lifecycle.RefreshWeapons();
         if (!network) lifecycle.PlaceAtSpawn();

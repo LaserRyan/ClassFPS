@@ -2,7 +2,8 @@
 
 Online Gunslinger revolver shots, reloads, lifesteal, health, death and respawns are
 server-authoritative. Every selected hero can receive revolver damage and respawn.
-Dash, Fire Wizard attacks, Sword attacks, projectiles and burn remain disabled online.
+Gunslinger dash is server-approved with a server-owned cooldown and owner CharacterController movement.
+Fire Wizard attacks, Sword attacks, projectiles and burn remain disabled online.
 Offline play retains the existing behavior and one fixed kit per hero.
 
 ## Networking choice and authority
@@ -61,7 +62,9 @@ still uses per-actor camera ownership: owner sees their first-person kit and oth
 actors' world bodies; observers see world equipment and hide first-person renderers.
 
 Only the selected kit is instantiated. Online weapon gameplay remains blocked/disabled;
-network input sends intents independently. Secondary/passive behaviors are not instantiated:
+network input sends intents independently. Gunslinger's secondary prefab is instantiated
+once in network-controlled mode; only its owner moves, and only after server approval.
+The dash HUD is owner-only. Other secondary/passive behaviors are not instantiated:
 the server reads the selected Gunslinger passive definition to calculate lifesteal.
 NetworkProtected rejects offline damage/healing/full-restore operations, including bot
 shots and debug keys. Server snapshots drive normal health/ammo change notifications.
@@ -145,8 +148,9 @@ a development host with the setting false. Never use this probe as future match 
   instance receives movement, upright body yaw and pitched world weapon/hand.
 - Test Gunslinger, Fire Wizard and Sword appearance, owner first-person visibility,
   other-body visibility, remote first-person hiding and simultaneous Game/Scene views.
-- Gunslinger MB1/R use the server revolver path. MB2, Fire/Sword attacks and F8/F9
-  remain disabled online. Check no local projectile, burn or dash is created.
+- Gunslinger MB1/R use the server revolver path and MB2 requests a server-approved
+  dash. Fire/Sword attacks and F8/F9 remain disabled online. No local projectile/burn
+  is created; dash follows the dedicated checklist below.
 - F6 settings off/on, closing without selecting, request waiting/rejection, rapid clicks,
   and repeated hero changes: correct stats/spawn, one kit/model, no stuck cursor/capture
   input, no duplicate HUD/audio. Confirm changes on both peers.
@@ -256,7 +260,7 @@ the connection panel to recapture, then release MB1 before firing.
    no duplicate host audio. Client health HUD decreases; F8/F9 do nothing online.
 2. Client shoots host: verify the same behavior in reverse. Then select Fire Wizard
    and Sword as targets through enabled development hero changes; both can die,
-   while their attacks and Gunslinger MB2 remain disabled.
+   while their attacks remain disabled. Gunslinger MB2 now uses the network dash path.
 3. Shoot into/around walls: closest wall blocks damage. Dead bodies do not intercept
    shots intended for a living actor behind them. Misses give no damage feedback/heal.
 4. Hold fire through cooldown and automatic reload, tap R early, spam R/MB1, and
@@ -349,3 +353,90 @@ project assemblies. Its known unrelated UnityEditor.Search startup exception rem
 No two-instance test, executable build, graphical/input/audio or offline gameplay test
 was performed for this correction. Also inspect player-to-player contact for visible
 collision jitter now that collision roots update independently from the rendered model.
+
+
+## Network Gunslinger dash
+
+MB2 press requests one dash. The server validates RPC ownership/sender, selected
+Gunslinger definition, alive state, finite current-life body pose, monotonic request
+sequence, request rate, cooldown and active-dash state. Clients do not supply distance,
+duration or cooldown. Defaults remain **5 metres / 0.2 seconds / 5 seconds** in
+`Assets/Definitions/Heroes/GunslingerAbilities.asset`; the host's values govern online.
+
+The server starts cooldown at acceptance and sends approval with the captured horizontal
+facing direction and its configured distance/duration. The owner then uses the existing
+GunslingerDash through FPSController's one CharacterController.Move. Ordinary horizontal
+movement is overridden, camera look and vertical velocity/gravity remain active, and a
+blocking side collision stops travel. Camera pitch and subsequent looking do not steer.
+Shooting, lifesteal, incoming damage and server reload timing continue normally. Dash
+provides no damage or immunity. Holding MB2 neither repeats nor queues another dash.
+
+This retains the current owner-authoritative movement policy. The server owns permission
+and cooldown, not a separate movement simulation or anti-cheat distance check. There is
+one network round trip before the owner's movement starts; prediction/correction can be
+considered with future authoritative movement work. Body poses replicate through the
+existing ordered movement stream, with observer world models smoothed independently.
+
+The owner HUD shows waiting/ready/server cooldown. Other players receive accepted start/
+stop presentation events but do not execute dash movement. Existing optional dash audio
+is local 2D for the owner and spatial for observers; optional particles stay under the
+first-person kit's visibility rules. No new art/audio is required. Missing references are
+safe. Remote HUDs stay disabled. Only one secondary is created for the selected kit.
+
+Wall, cursor release, focus loss, controller/component disable, F6 menu, death, hero change
+and disconnect cancel travel/pending approval. An approval that has not arrived within
+one second of the press is discarded rather than starting a delayed dash. Accepted cancellation keeps cooldown;
+respawn/hero change resets it. A late approval after cancellation, old-life request, old
+stop event or held input through recapture cannot start a new dash. The server has one
+active deadline; no deferred requests, queued dashes or coroutine timers accumulate.
+
+Setup: no new scene asset or prefab generation is needed with the existing Gunslinger
+assets. **Validate Local Multiplayer Test** checks its dash definition and exactly one
+HUD. Repeatable setup reuses the existing player/kit/prefabs. If reconstructing missing
+Gunslinger assets, first run the existing hero setup in MovementTest. Rebuild the exe
+and restart both peers: the combat snapshot and dash RPC wire schema changed.
+
+Manual two-instance dash checklist (pending agent gameplay validation):
+
+1. Host and standalone client each select Gunslinger. MB2 triggers once, holding does
+   not repeat after cooldown, and clicks during cooldown do not queue. HUDs agree
+   with the server's configured cooldown; the remote player has no extra HUD.
+2. Dash facing forward/sideways relative to the arena, look up/down before pressing,
+   then turn during travel. Capture direction at press, keep body upright, do not steer.
+3. Dash into a wall, corner, ramp and low ceiling. Never pass through blocking geometry.
+   Check player-to-player contact. Stopping against a wall must retain cooldown.
+4. Jump/fall and dash. Preserve upward/downward velocity and gravity. Shooting and
+   lifesteal work while dashing; R and automatic reload progress are not restarted.
+5. Take lethal damage during dash: no immunity, immediate cancellation, normal death
+   countdown/respawn. Health/ammo/position/dash state reset; no old request resumes.
+6. Escape, lose focus, disable the controller, or open F6 during pending/active dash.
+   It stops, accepted cooldown remains, and recapture/held MB2 cannot retrigger.
+7. Change hero while waiting/dashing/on cooldown, repeat death/respawn and disconnect/
+   reconnect. Exactly one current kit/model/dash/HUD; old-life requests do not apply.
+   Fire Wizard and Sword cannot dash or attack online.
+8. Inspect owner/observer visibility and any assigned optional dash audio/effects;
+   host effects play once. Recheck offline Gunslinger dash/shooting/lifesteal and
+   Fire/Sword behavior in MovementTest or the lobby Offline test.
+
+
+Automated dash validation completed:
+
+- Runtime Editor/development/release and separate Editor compilation passed.
+- **72 policy checks per configuration** (216 total) passed, including dash owner/
+  hero/alive/pose/life/rate/cooldown gates, zero-cooldown overlap, cancellation and reset.
+- Existing **33 Gunslinger + 44 heat + 16 camera checks** passed.
+- **64 native single-host assertions** passed after real Unity import/NGO IL processing:
+  approval/cooldown snapshots, pitch-independent captured direction, duplicate/stale/
+  non-Gunslinger rejection, reload preservation, real controller wall stopping and
+  airborne velocity preservation, look without steering, shooting during dash, focus/
+  menu/death cancellation, respawn reset and one active owner dash/HUD. Native physics
+  is invoked directly; it does not simulate mouse/keyboard input or a connected client.
+- Clone setup ran twice. The existing smoothing check now takes an explicit short
+  timestep instead of assuming a short first frame after import. Disposal copy is
+  under ignored Builds/NetworkDashValidation (main Unity clears Temp). It uses current
+  cached packages including Transport 2.7.4, matching main compilation. Optional Editor
+  entitlement messages and the known Search startup exception still log independently.
+- Source/document whitespace checks passed. No source scene/prefab YAML was edited.
+
+Two-instance gameplay, graphical visibility, audio listening, actual keyboard/mouse
+cancellation, executable builds and full offline gameplay remain manual checks above.

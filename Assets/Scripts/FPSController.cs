@@ -31,11 +31,11 @@ public sealed class FPSController : MonoBehaviour
     public Rect CursorCaptureExclusion { get; set; }
     public bool CanCaptureCursorAt(Vector2 screenPosition) =>
         !CursorCaptureExclusion.Contains(new Vector2(screenPosition.x, Screen.height - screenPosition.y));
-    public bool CanAcceptGameplayInput => ownsLocalInput && isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
-        Time.frameCount > suppressGameplayThroughFrame &&
-        gameplayInputFrame == Time.frameCount && cursorCaptureRequested &&
-        Application.isFocused && Cursor.lockState == CursorLockMode.Locked &&
-        Time.timeScale > 0f;
+    // Stable capture/lifecycle gate for replies that arrive before this frame's Update.
+    public bool CanMaintainGameplayInput => ownsLocalInput && isActiveAndEnabled && !gameplayBlocked && !selectingHero &&
+        cursorCaptureRequested && Application.isFocused && Cursor.lockState == CursorLockMode.Locked && Time.timeScale > 0f;
+    public bool CanAcceptGameplayInput => CanMaintainGameplayInput && Time.frameCount > suppressGameplayThroughFrame &&
+        gameplayInputFrame == Time.frameCount;
 
     private void Awake()
     {
@@ -153,6 +153,11 @@ public sealed class FPSController : MonoBehaviour
             displacement.x = dashStep.x;
             displacement.z = dashStep.z;
         }
+        MoveCharacter(displacement, dashing);
+    }
+
+    private void MoveCharacter(Vector3 displacement, bool dashing)
+    {
         CollisionFlags collisions = controller.Move(displacement);
         if (dashing && (collisions & CollisionFlags.Sides) != 0)
             Dash.Cancel();
@@ -164,6 +169,7 @@ public sealed class FPSController : MonoBehaviour
 
     public void SetGameplayBlocked(bool blocked)
     {
+        if (gameplayBlocked == blocked) return;
         gameplayBlocked = blocked;
         if (blocked) Dash?.Cancel();
         gameplayInputFrame = -1;

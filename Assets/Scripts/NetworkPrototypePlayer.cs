@@ -91,6 +91,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         if (definition == null) { Debug.LogError("Received unknown hero identity.", this); return; }
         health.NetworkProtected = health.DamageBlocked = true;
         GetComponent<BurnStatus>()?.Clear();
+        UnbindNetworkDash();
         selection.ApplyNetworkHero(definition, IsOwner, state.Spawn, Quaternion.Euler(0f, state.Yaw, 0f));
         appliedRevision = state.Revision;
         poseSequence = 0;
@@ -108,6 +109,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         fireRequiresRelease = true;
         requestSequence = 0;
         nextFireIntent = 0;
+        BindNetworkDash();
         if (IsServer) ResetServerCombat();
         ApplyCombatSnapshot();
         if (IsOwner) PublishPose();
@@ -137,6 +139,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         if (!IsSpawned || appliedRevision == 0) return;
         if (IsOwner)
         {
+            ReadDashInput();
             ReadCombatInput();
             if (Time.unscaledTime >= nextPoseAt && !pendingChange && !combatState.Value.Dead)
             { PublishPose(); nextPoseAt = Time.unscaledTime + 1f / 30f; }
@@ -144,7 +147,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         else
         {
             ApplyRemotePose(pose.Value);
-            SmoothRemotePresentation();
+            SmoothRemotePresentation(Time.unscaledDeltaTime);
         }
     }
     private NetworkPlayerPose CapturePose() => new NetworkPlayerPose
@@ -165,11 +168,11 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
         if (selection.SelectedWorldPresentation != null)
             selection.SelectedWorldPresentation.transform.SetPositionAndRotation(visualPosition, visualRotation);
     }
-    private void SmoothRemotePresentation()
+    private void SmoothRemotePresentation(float seconds)
     {
         WorldHeroPresentation world = selection.SelectedWorldPresentation;
         if (world == null) return;
-        float blend = 1f - Mathf.Exp(-18f * Time.unscaledDeltaTime);
+        float blend = 1f - Mathf.Exp(-18f * seconds);
         visualPosition = Vector3.Lerp(visualPosition, transform.TransformPoint(worldRestPosition), blend);
         visualRotation = Quaternion.Slerp(visualRotation, transform.rotation * worldRestRotation, blend);
         world.transform.SetPositionAndRotation(visualPosition, visualRotation);
@@ -257,6 +260,7 @@ public sealed partial class NetworkPrototypePlayer : NetworkBehaviour
     }
     public override void OnNetworkDespawn()
     {
+        UnbindNetworkDash();
         hero.OnValueChanged -= OnHeroChanged;
         pose.OnValueChanged -= OnPoseChanged;
         combatState.OnValueChanged -= OnCombatChanged;

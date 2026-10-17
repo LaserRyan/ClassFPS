@@ -82,6 +82,31 @@ public static class NetworkPolicyChecks
         Check(ordering.TryAccept(5, 1, true, true), "new life accepts restarted sequence");
         Check(!ordering.TryAccept(4, uint.MaxValue, true, true) && ordering.LastSequence == 1,
             "old life cannot undo respawn or poison fresh movement");
+        var dash = new NetworkDashState();
+        dash.Reset(7);
+        Check(!dash.TryStart(7, 1, 0, false, true, true, true, 5, .2f, 5), "dash rejects non-owner");
+        Check(!dash.TryStart(6, 1, 0, true, true, true, true, 5, .2f, 5), "dash rejects previous life");
+        Check(dash.TryStart(7, 1, 0, true, true, true, true, 5, .2f, 5), "server accepts fresh Gunslinger dash");
+        Check(dash.ReadyAt == 5 && dash.Active(.1), "dash cooldown starts on acceptance");
+        Check(!dash.TryStart(7, 1, 1, true, true, true, true, 5, .2f, 5), "dash duplicate request rejected");
+        Check(!dash.TryStart(7, 2, .001, true, true, true, true, 5, .2f, 5), "dash request flood rejected");
+        Check(!dash.TryStart(7, 3, .3, true, true, true, true, 5, .2f, 5), "dash cooldown cannot be bypassed");
+        Check(!dash.Cancel(6, 1) && !dash.Cancel(7, 2), "stale or other activation cannot cancel current dash");
+        Check(dash.Cancel(7, 1) && !dash.Active(.1) && dash.ReadyAt == 5, "wall/focus cancellation preserves cooldown");
+        Check(!dash.Cancel(7, 1), "dash cancellation is idempotent");
+        Check(dash.TryStart(7, 4, 5, true, true, true, true, 5, .2f, 5), "fresh request accepted when ready");
+        dash.Reset(8);
+        Check(dash.ReadyAt == 0 && !dash.Active(0), "respawn resets dash and cooldown");
+        Check(!dash.TryStart(7, 999, 1, true, true, true, true, 5, .2f, 5) && dash.LastRequest == 0,
+            "old life does not poison new dash sequence");
+        Check(!dash.TryStart(8, 1, 1, true, false, true, true, 5, .2f, 5), "other heroes cannot dash");
+        Check(!dash.TryStart(8, 2, 2, true, true, false, true, 5, .2f, 5), "dead actors cannot dash");
+        Check(!dash.TryStart(8, 3, 3, true, true, true, false, 5, .2f, 5), "invalid movement sample cannot dash");
+        Check(!dash.TryStart(8, 4, 4, true, true, true, true, 0, .2f, 5), "disabled dash distance rejected");
+        Check(!dash.TryStart(8, 5, 5, true, true, true, true, 5, float.NaN, 5), "invalid dash duration rejected");
+        Check(dash.TryStart(8, 6, 6, true, true, true, true, 5, .2f, 0), "zero cooldown remains configurable");
+        Check(!dash.TryStart(8, 7, 6.1, true, true, true, true, 5, .2f, 0), "active dash cannot overlap even with zero cooldown");
+        Check(dash.TryStart(8, 8, 6.3, true, true, true, true, 5, .2f, 0), "zero cooldown permits next fresh activation after duration");
         Console.WriteLine(checks + " network policy checks passed (development features: " + dev + ").");
     }
 }

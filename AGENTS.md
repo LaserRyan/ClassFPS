@@ -714,3 +714,53 @@ This supersedes earlier statements that all online combat is disabled.
   Rebuild the executable and restart both peers: pose/RPC wire formats changed.
   No new standalone build, two-window combat, interactive/graphical/audio or offline
   gameplay validation performed by the agent. Chat-only reporting preference retained.
+
+### Network Gunslinger dash (2026-10-17)
+
+- User reports improvement after the moving-shot correction; do not infer the full
+  manual combat checklist is complete. Gunslinger MB2 is now enabled online.
+- Server validates owner/sender, Gunslinger definition, alive state, finite current-life
+  pose, monotonic request/flood gate, active state and cooldown. NetworkDashState holds
+  server permission/deadlines; combat snapshots include DashReadyAt. Distance/duration/
+  cooldown come only from the host's existing GunslingerAbilities.asset (5 m / 0.2 s /
+  5 s defaults). Cooldown begins on acceptance, not movement completion.
+- Owner starts only after approval, using GunslingerDash in network-controlled mode
+  through the existing FPSController CharacterController.Move. Captured horizontal yaw
+  ignores camera pitch and cannot steer; vertical velocity/gravity/look remain intact.
+  Shooting, lifesteal and reload continue, with no damage or immunity. Holding does not
+  repeat/queue. Server-owned cooldown is not movement anti-cheat: movement remains
+  owner-authoritative, with one round trip before travel and no prediction added.
+- HeroSelection instantiates exactly one Gunslinger secondary online, no passive or
+  Fire/Sword secondary. Direct offline Activate is blocked in network mode. Owner HUD
+  displays waiting/ready/cooldown; remote HUDs are disabled. Accepted start/stop events
+  reuse optional DashPresentation audio/effects; observer audio is spatial, owner 2D.
+  Optional particles retain first-person visibility rules. Missing art/audio is safe.
+- Cursor/focus/menu/disable/wall/death/hero change/disconnect cancel travel and pending
+  approval. Replies arriving after a one-second local wait are discarded. Accepted
+  cancellation keeps cooldown; respawn/hero changes reset state/cooldown/generation.
+  Specific activation IDs prevent old stops from canceling a later dash. No queued
+  dashes, coroutine timers, duplicate kits/models/HUDs or shared asset writes.
+- FPSController adds a stable capture/lifecycle gate for approval RPCs arriving before
+  Update; requests still use the original current-frame/fresh-input gate. Unchanged
+  alive/ammo/cooldown snapshots no longer erase the current input frame. Its single
+  collision Move is factored for native checks, with unchanged movement behavior.
+- Setup/validation reuse existing assets; validation checks dash definition and one
+  HUD. No source scene/prefab YAML, package or project-setting changes. Rebuild the exe
+  and restart both peers because the combat snapshot/dash RPC wire schema changed.
+- Completed: Runtime Editor/development/release and separate Editor compilation;
+  72 policy/combat/dash checks per configuration (216 total), 33 Gunslinger, 44 heat,
+  16 camera checks; isolated native Unity import/NGO IL processing and 64 host assertions.
+  Native includes server cooldown/RPC rejection, pitch-independent direction, real
+  controller wall collision, airborne velocity, shooting/reload, focus/menu/death,
+  respawn/life guards and one owner HUD. Physics calls are direct fixtures, not a
+  graphical keypress test. Existing smoothing check now uses a fixed timestep so a
+  slow first import frame cannot create a false failure.
+- Disposable validation now lives under ignored Builds/NetworkDashValidation; main
+  Unity cleared the old Temp copy. Clone uses current cached packages, including
+  Transport 2.7.4. Initial clone setup/encoding issues were fixed before native checks
+  passed. Optional Editor package entitlement messages and the known Search startup
+  indexing exception still log, separately from passing project assertions.
+- MULTIPLAYER_TEST.md and GUNSLINGER_TEST.md contain setup/tuning/authority details and
+  pending two-instance dash checks. No standalone build, two-instance dash gameplay,
+  graphical/input/audio or full offline gameplay validation performed by the agent.
+  Chat-only reports retained; unrelated untracked root file remains untouched.

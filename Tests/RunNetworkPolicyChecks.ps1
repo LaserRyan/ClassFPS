@@ -11,7 +11,7 @@ foreach ($configuration in @('Editor', 'Development', 'Release')) {
         ForEach-Object { '-r:"' + (Join-Path $runtime.FullName $_) + '"' }
     if ($configuration -eq 'Editor') { $arguments += '-define:UNITY_EDITOR' }
     if ($configuration -eq 'Development') { $arguments += '-define:DEVELOPMENT_BUILD' }
-    $arguments += @('IDamageable','PlayerHealth','TargetHealth','GunslingerRules','NetworkTestRules','NetworkRevolverState') |
+    $arguments += @('IDamageable','PlayerHealth','TargetHealth','GunslingerRules','NetworkTestRules','NetworkRevolverState','NetworkDashState') |
         ForEach-Object { '"' + (Join-Path $projectRoot ('Assets/Scripts/' + $_ + '.cs')) + '"' }
     $arguments += '"' + (Join-Path $PSScriptRoot 'GunslingerChecks.cs') + '"'
     $arguments += '"' + (Join-Path $PSScriptRoot 'NetworkPolicyChecks.cs') + '"'

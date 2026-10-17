@@ -120,7 +120,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     }
     private void Connected(ulong clientId)
     {
-        if (clientId == manager.LocalClientId) { connecting = false; message = "Connected. Gunslinger primary online; other attacks and abilities disabled."; }
+        if (clientId == manager.LocalClientId) { connecting = false; message = "Connected. Gunslinger primary/dash online; Fire and Sword attacks disabled."; }
         if (!manager.IsServer) return;
         if (!approved.TryGetValue(clientId, out HeroDefinition hero))
         { manager.DisconnectClient(clientId, "Missing approved hero."); return; }

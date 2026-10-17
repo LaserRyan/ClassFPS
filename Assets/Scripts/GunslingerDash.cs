@@ -8,16 +8,43 @@ public sealed class GunslingerDash : HeroSecondary
     private FPSController movement;
     private Vector3 direction;
     private readonly DashState state = new DashState();
+    private bool networkControlled, networkOwner, networkVisualActive;
+    private float networkVisualUntil;
+    internal Func<float> NetworkCooldownRemaining;
+    internal bool NetworkRequestPending;
+    internal void ConfigureNetwork(bool owner)
+    {
+        networkControlled = true;
+        networkOwner = owner;
+        foreach (GunslingerDashHUD hud in GetComponentsInChildren<GunslingerDashHUD>(true)) hud.enabled = owner;
+        foreach (AudioSource source in GetComponentsInChildren<AudioSource>(true))
+        { source.enabled = true; source.spatialBlend = owner ? 0f : 1f; source.maxDistance = 40f; }
+    }
+    // Only the network adapter calls this after server approval. Observers play presentation only.
+    internal void BeginNetworkDash(Vector3 facing, float distance, float duration)
+    {
+        if (!networkControlled) return;
+        Cancel();
+        direction = Vector3.ProjectOnPlane(facing, Vector3.up).normalized;
+        if (networkOwner && !state.TryStart(Time.time, distance, duration, 0f, true, true)) return;
+        networkVisualActive = true;
+        networkVisualUntil = Time.time + duration;
+        Started?.Invoke();
+    }
+    private void Update()
+    {
+        if (networkControlled && !networkOwner && networkVisualActive && Time.time >= networkVisualUntil) Cancel();
+    }
     public event Action Started;
     public event Action Stopped;
     public bool IsDashing => state.Active;
     public GunslingerDefinition Definition => definition;
     public FPSController Movement => movement;
-    public float CooldownRemaining => state.CooldownRemaining(Time.time);
+    public float CooldownRemaining => networkControlled ? (NetworkCooldownRemaining?.Invoke() ?? 0f) : state.CooldownRemaining(Time.time);
     public override void Bind(FPSController owner) { movement = owner; owner.Dash = this; }
     public override void Activate(WeaponAttackContext context)
     {
-        if (definition == null || movement == null || !isActiveAndEnabled ||
+        if (networkControlled || definition == null || movement == null || !isActiveAndEnabled ||
             !movement.GetComponent<CharacterController>().enabled) return;
         Vector3 facing = Vector3.ProjectOnPlane(context.AimRay.direction, Vector3.up);
         if (facing.sqrMagnitude < 0.0001f) facing = movement.transform.forward;
@@ -32,13 +59,14 @@ public sealed class GunslingerDash : HeroSecondary
         if (!isActiveAndEnabled || movement == null || !movement.CanAcceptGameplayInput) Cancel();
         bool active = state.Active;
         Vector3 displacement = direction * state.Step(seconds);
-        if (active && !state.Active) Stopped?.Invoke();
+        if (active && !state.Active) { networkVisualActive = false; Stopped?.Invoke(); }
         return displacement;
     }
     public override void Cancel()
     {
-        bool active = state.Active;
+        bool active = state.Active || networkVisualActive;
         state.Cancel();
+        networkVisualActive = false;
         if (active) Stopped?.Invoke();
     }
     public override void ResetForRespawn() { Cancel(); state.Reset(); }

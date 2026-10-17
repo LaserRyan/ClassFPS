@@ -85,3 +85,14 @@ future mitigation must be applied before computing this result. Receivers implem
 only legacy IDamageable retain normal hit feedback but grant no lifesteal because
 their actual health damage is unknown. Healing emits only HealthChanged, never damage
 or on-hit events, and cannot revive or clear burn.
+
+
+## Online dash follow-up
+
+Gunslinger MB2 now uses server approval and a server-owned cooldown. Travel still runs
+through the owning player's existing CharacterController, with captured horizontal
+facing, gravity/vertical velocity preserved, shooting/reload allowed, wall stopping
+and no immunity/damage. Definition values stay in GunslingerAbilities.asset. Offline
+input and tuning behavior are unchanged. Rebuild the executable before connecting to
+the updated Editor. See MULTIPLAYER_TEST.md's network dash section for authority limits,
+waiting/ready HUD, cancellation/life guards and the two-instance gameplay checklist.

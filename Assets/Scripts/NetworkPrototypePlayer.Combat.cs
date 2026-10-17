@@ -22,6 +22,7 @@ public sealed partial class NetworkPrototypePlayer
 
     private void ResetServerCombat()
     {
+        serverDash.Reset(hero.Value.Revision);
         lastFirePoseSequence = 0;
         GunWeaponDefinition gun = ServerGun;
         revolver.Reset(hero.Value.Revision, gun != null ? gun.MagazineCapacity : 0);
@@ -52,6 +53,7 @@ public sealed partial class NetworkPrototypePlayer
         NetworkCombatSnapshot state = combatState.Value;
         state.Ammo = revolver.Ammo; state.Reloading = revolver.ReloadAt > 0;
         state.Dead = revolver.Dead; state.RespawnAt = revolver.RespawnAt;
+        state.DashReadyAt = serverDash.ReadyAt;
         combatState.Value = state;
     }
     private void OnCombatChanged(NetworkCombatSnapshot previous, NetworkCombatSnapshot current) => ApplyCombatSnapshot();
@@ -71,7 +73,7 @@ public sealed partial class NetworkPrototypePlayer
             foreach (GunPresentation visual in selection.SelectedKit.GetComponentsInChildren<GunPresentation>(true))
                 visual.gameObject.SetActive(!state.Dead);
         }
-        if (state.Dead) { fireRequiresRelease = true; if (worldShotAudio != null) worldShotAudio.Stop(); }
+        if (state.Dead) { CancelLocalDashRequest(); fireRequiresRelease = true; if (worldShotAudio != null) worldShotAudio.Stop(); }
     }
     private void ReadCombatInput()
     {
@@ -154,7 +156,8 @@ public sealed partial class NetworkPrototypePlayer
         float actual = NetworkRevolverState.ActualDamage(state.Health, damage);
         state.Health -= actual;
         if (state.Health <= 0 && revolver.Die(ServerNow, networkRespawnDelay))
-        { state.Dead = true; state.Reloading = false; state.RespawnAt = revolver.RespawnAt; }
+        { StopServerDash(hero.Value.Revision, serverDash.ActiveRequest);
+          state.Dead = true; state.Reloading = false; state.RespawnAt = revolver.RespawnAt; }
         combatState.Value = state;
         return actual;
     }

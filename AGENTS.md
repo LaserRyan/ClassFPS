@@ -32,6 +32,21 @@ work. Do not add weapon
 switching, ammo, reloads, multiplayer, or hero systems without a new task requesting
 them.
 
+### Model replaceability during kit design
+
+- User wants to develop character artwork while hero kits are still being designed.
+  Preserve the ability to replace placeholder bodies with humanoid or monster models.
+- Keep movement, combat authority, damage, resources and ability timing independent
+  of a particular mesh, skeleton, bone names or animation clips. Use configurable
+  presentation pivots/references and optional visual event hooks; missing art is safe.
+- Keep first-person equipment separate from world presentation and preserve per-owner
+  camera visibility, selected appearance and replacement/respawn cleanup.
+- Visual model changes must not silently alter CharacterController dimensions or
+  damage hitboxes. Unusual monster proportions may require an explicit later hitbox,
+  rig or animation integration task. Do not assume every future hero is humanoid.
+- This is a constraint for future kit work, not a request to add models, animations,
+  cosmetic switching or a new character system now.
+
 ## Current implementation
 
 ### Movement and cursor

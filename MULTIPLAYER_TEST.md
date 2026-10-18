@@ -2,7 +2,8 @@
 
 Online Gunslinger revolver shots, reloads, lifesteal, health, death and respawns are
 server-authoritative. Every selected hero can receive revolver damage and respawn.
-Gunslinger dash is server-approved with a server-owned cooldown and owner CharacterController movement.
+Movement, jumping and Gunslinger dash now use server-authoritative CharacterController simulation,
+with immediate owner prediction and snapshot reconciliation. Revolver shots use bounded capsule rewind.
 Fire Wizard attacks, Sword attacks, projectiles and burn remain disabled online.
 Offline play retains the existing behavior and one fixed kit per hero.
 
@@ -22,16 +23,73 @@ the hero/respawn state. Clients send only IDs, never hero assets or stat values.
 Unknown IDs are rejected at approval and in change requests. Both peers must have the
 same configured catalog/assets and test scene; NGO scene management is intentionally off.
 
-Movement is owner-authoritative: each owner publishes position, yaw and pitch at up
-to 30 Hz. Received collision roots use the newest valid pose immediately; observers
-smooth only the world model's position/yaw and apply world-weapon pitch. Movement is
-trusted, with no server collision validation, prediction, reconciliation or anti-cheat.
-A server-written hero revision groups identity and spawn pose atomically; owner poses
-carry that revision, so old movement cannot undo a hero-change respawn. Replicated
-variables retain identity, pose, combat health/death and ammo state for late joiners.
-The server now validates revolver intents and owns hitscan, health, lifesteal, ammo,
-reload, cooldown and respawn deadlines. This does not add movement anti-cheat,
-server collision validation, lag compensation or rewind.
+Movement inputs run at 30 fixed steps/second on the server. Clients never send positions,
+velocities, movement durations or shot origins. Input commands contain bounded movement axes,
+yaw/pitch, action bits, a sequence, life/kit generation and a timestamp. Ownership, finite values,
+sequence/life, timestamp age, queue size and a 30 Hz token budget are checked before simulation.
+The host uses the same motor once; clients predict that motor and replay unacknowledged input
+on authoritative snapshots. Replay never fires damage, audio or attack effects. Death/respawn,
+hero changes and disconnect clear histories and pending commands. This is a prototype prediction
+implementation, not a general anti-cheat solution; reliable command transport can show corrections
+under packet loss, and moving-player collisions are harder to predict than static geometry.
+
+Observers render timestamped world poses with a default 100 ms interpolation delay. Collision
+roots keep the newest server pose. Revolver rays originate at the server's actor/eye position.
+Living target CharacterController capsules have a bounded position history; analytical ray/capsule
+queries interpolate it without moving live physics objects. Static walls use current server physics
+and block historical targets. Client view time is limited by measured RTT, interpolation delay and
+NGO's 50 ms server-clock buffer and 35 ms tolerance, with a default maximum rewind of 200 ms. Future/nonfinite or stale input is rejected.
+History clears per life/kit, dead targets are excluded, and current health governs actual damage.
+There are no bone/headshot hitboxes or historical moving-world geometry in this milestone.
+
+This improves shots at moving displayed targets, but can award a hit shortly after a target reaches
+cover (within the rewind bound). Extremely delayed shots beyond that bound still miss. Movement
+prediction may correct visibly under latency/loss; test those conditions before tuning competitive play.
+Hero models remain replaceable independently of the gameplay capsule, camera and attack code.
+
+## Development opponent and new movement/rewind checks (2026-10-18)
+
+Rebuild the executable and restart both peers: the RPC/snapshot schema and protocol changed.
+Existing setup commands remain repeatable; no additional scene objects, project layers or packages
+are required. Open MultiplayerTest, select **Network Prototype Session**, enable **Allow Test Opponent**
+on the **host**, and enable **Allow Test Hero Changes** if testing F6. Both are off by default.
+**Interpolation Delay** defaults to 0.1 seconds; **Maximum Rewind** defaults to 0.2 seconds on this
+component. The server advertises interpolation delay to clients; do not tune it differently per client.
+Hero stats, gun and Gunslinger dash/lifesteal values remain in the existing definition assets.
+
+In Editor or a Development Build, press **F7** to release the cursor and open opponent controls:
+spawn one Gunslinger, toggle strafe, fire once, toggle repeated shooting, reset, or remove.
+A free grounded spawn near the requester is chosen by the server; blocked spawn attempts reject.
+Fire once obeys ammo/reload/cooldown and can be rejected while not ready. Reset stops actions and
+respawns the opponent with full resources. The opponent uses the real server motor, gun, lifesteal,
+health/death/respawn and world presentation. It has no local camera, listener, HUD or input.
+The creator and host can control it; creator disconnect removes it. Server settings and build gates
+reject unauthorized/release requests even if client UI is bypassed. F6/F7 menus are mutually exclusive;
+closing requires normal recapture and fresh attack input. This is testing infrastructure, not enemy AI.
+
+Manual checks (not completed by automated host fixtures):
+
+1. Rebuild a Development exe; connect Editor host + exe client using the existing steps below.
+2. On each peer, move/jump/strafe into walls and around corners. Owners should respond immediately;
+   observers should see smooth movement/aim, correct heroes and no extra camera/listener/HUD.
+3. Use F7 from the client: spawn, close/recapture, shoot stationary and strafing opponent. Watch
+   confirmed hit markers, damage/death, ammo/reload and lifesteal. Repeat from the host.
+4. Toggle opponent shooting to test receiving damage/death without controlling both windows.
+   Repeated fire lets the opponent kill/respawn you while you inspect controls and fresh input.
+5. Repeat held MB2, airborne dash, wall/corner dash, look during dash, shooting/reload during dash,
+   focus/cursor/menu cancellation and repeated deaths. Prediction must not grant extra distance,
+   shots, ammo, cooldown resets or immunity. Held MB2 must never repeat or queue.
+6. Under transport latency/jitter/loss simulation, strafe against the opponent, shoot moving targets,
+   and inspect visible corrections. Historical hits remain bounded; a target may take a recent hit
+   just after cover. A static wall directly in the server ray must always block the shot.
+7. Late join, change heroes, respawn repeatedly, disconnect/reconnect. Check one kit/world model,
+   no stale input/shot/dash replay, and opponent removal on creator disconnect.
+8. Release host: F6/F7 test controls must be absent; an Editor/dev client cannot enable them.
+   Check offline Gunslinger, Fire Wizard and Sword behavior using Offline test/MovementTest.
+
+Automated verification for this revision is recorded in the latest AGENTS.md entry. Standalone
+compilation, policy assertions and isolated single-host physics fixtures do not establish two-peer
+prediction feel, packet-loss behavior, graphical input, art/audio or full offline gameplay correctness.
 
 ## Setup and editable configuration
 
@@ -63,7 +121,8 @@ actors' world bodies; observers see world equipment and hide first-person render
 
 Only the selected kit is instantiated. Online weapon gameplay remains blocked/disabled;
 network input sends intents independently. Gunslinger's secondary prefab is instantiated
-once in network-controlled mode; only its owner moves, and only after server approval.
+once in network-controlled presentation mode. Its travel is predicted locally and validated/simulated
+on the server through the shared motor; authoritative snapshots correct prediction.
 The dash HUD is owner-only. Other secondary/passive behaviors are not instantiated:
 the server reads the selected Gunslinger passive definition to calculate lifesteal.
 NetworkProtected rejects offline damage/healing/full-restore operations, including bot
@@ -165,56 +224,6 @@ a development host with the setting false. Never use this probe as future match 
   death/respawn, HUD, audio and cursor gates. Offline test keeps its selected hero when
   returning to the lobby and back; restart Play mode for a fresh offline selection.
 
-## Previous movement milestone checks and limits (historical)
-
-- Standalone Runtime compilation in Editor, development and release configurations,
-  plus separate Editor compilation, using actual NGO/Transport/Unity assemblies.
-  `Tests/RunCompilationChecks.ps1` defaults to Library/ScriptAssemblies after import;
-  `-ScriptAssemblies <path>` can use an isolated validation project's assemblies.
-- Actual Unity package import/C# compilation and NGO RPC/NetworkVariable IL processing
-  passed in an isolated Unity 6000.3.26f1 project using cached packages and the exact
-  downloaded NGO/Transport versions. No source-project scene/settings were changed.
-- `NetworkPrototypeBatchChecks.Run`: setup twice, native single-host Play mode,
-  **22 assertions** covering default setting, unknown IDs, ownership/camera/listener,
-  inert online input/abilities/damage, menu suppression, repeated hero replacement,
-  actual stale/unknown/disabled-setting RPC rejection, cleanup and host restart.
-  The isolated Editor logged an unrelated UnityEditor.Search startup indexing exception;
-  host assertions passed with no project/network initialization errors after fixes.
-  This optional CLI method generates/saves assets and enters Play mode: run it only
-  in a disposable copy, with `-batchmode -nographics -executeMethod
-  NetworkPrototypeBatchChecks.Run` and **without -quit** (it exits when finished).
-- `Tests/RunNetworkPolicyChecks.ps1`: **17 Editor + 17 development + 17 release checks**
-  of the actual compile-gated server policy and real health code with Unity shims.
-  Release checks explicitly reject even an enabled server setting. Tests cover owner,
-  catalog, concurrent/stale revision gates and protected damage/healing/restore behavior.
-- Existing **33 Gunslinger**, **44 heat state**, and **16 visibility** checks passed.
-- Source/document whitespace checks passed. Unity-generated empty serialized string
-  fields retain the serializer's usual trailing spaces; no scene/prefab YAML was edited.
-
-No standalone game build, second connected instance, native remote interpolation,
-interactive keyboard/mouse/UI, graphical visibility, audio listening or full gameplay
-regression was executed. The headless host checks do not replace the manual connection,
-release-host wire rejection and offline checklist above.
-
-### Disconnect button follow-up
-
-The user reports connection and development hero changes working, but Disconnect did
-not respond. FPSController was recapturing any left-click after Escape before OnGUI
-could handle the button. The connection panel now provides a capture exclusion rect
-before movement Update, for network and embedded offline play. Other Game-view clicks
-still capture normally. The UI and native lifecycle checks share Session.Disconnect.
-The expanded native host check has **24 assertions**, including inside/outside panel
-capture policy, button-handler shutdown, cleanup and reconnect. Runtime compilation in
-Editor/development/release and separate Editor compilation passed again.
-
-Retest: stop Play mode, let scripts import, **rebuild the standalone executable**, then
-host/join again. Press Escape and click Disconnect on the client; its actor should
-disappear from the host and the client should show the connection menu. Rejoin, then
-disconnect the host and verify both return to their menus. Also click the world outside
-the panel to verify normal recapture. Actual mouse-driven button clicks in both windows
-remain a manual check; native assertions test the capture predicate and handler path.
-
-
 ## Server revolver configuration and protocol
 
 - Primary tuning: `Assets/Definitions/Weapons/GunPrototype.asset` (damage, range,
@@ -224,14 +233,11 @@ remain a manual check; native assertions test the capture predicate and handler 
 - Respawn delay: **Network Respawn Delay** on `NetworkPrototypePlayer` in
   `Assets/Prefabs/Network/NetworkPlayer.prefab`, default 3 seconds. Spawn origin/yaw/
   spacing remain on Network Prototype Session. All mutable values live on actors.
-- Requests contain generation, increasing request sequence, the matching sequenced
-  owner body pose, normalized aim direction and fire/reload intent. Server checks
-  owner/sender, generation, sequence/flood budget,
-  selected catalog gun, alive state, finite normalized aim, cooldown/ammo/reload.
-  It derives the ray from the matching owner-authoritative body movement sample and
-  its own camera-local eye offset, ignores shooter/dead colliders, and selects the
-  closest blocking surface. Clients cannot submit an independent eye origin. Offline targets/bots
-  are blocking surfaces, not networked damage recipients in this milestone.
+- Fixed-step movement commands also carry held fire/reload intent and yaw/pitch. The server
+  validates owner, life/sequence/time and rate, then its own selected gun, alive state,
+  cooldown/ammo/reload. It derives the eye from its simulated actor and prefab camera offset.
+  The closest current wall bounds historical capsule queries; shooter and dead actors are
+  excluded. Offline targets/bots remain blocking geometry, not network damage recipients.
 - Server actual damage is the representable health removed, capped at remaining
   health. Selected passive healing uses that value, clamps at maximum and cannot
   revive. Health changes do not recursively trigger on-hit events.
@@ -239,13 +245,12 @@ remain a manual check; native assertions test the capture predicate and handler 
   are disabled, and remote pose application stops. Respawn increments the same
   server revision used by hero changes, clears deadlines/ammo/reload/cooldown, rebuilds
   one selected kit, and resets position/yaw/pitch/vertical velocity. Old-life fire and
-  pose messages fail the revision guard. No coroutine/timer survives disconnect.
-- Held MB1 sends at most 20 intents/second; the server independently gates request
-  rate and configured cooldown. Rejected attempts are not queued or predicted.
-  Release/focus/menu/capture/death gates require button release before resuming.
-  Host uses the same generated owner-to-server RPC and receives one accepted-shot
-  notification. No client-supplied eye offset, damage, target or hit result is used.
-  Body position remains owner-authoritative, exactly as ordinary movement.
+  input messages fail the revision guard. No coroutine/timer survives disconnect.
+- Held MB1 is sampled with 30 Hz input; only fresh consumed commands can request shots.
+  The server gun cooldown independently limits accepted shots. Movement and dash are predicted;
+  damage, hit markers and ammo are authoritative. Cursor/focus/menu/death gates require release.
+  Host and client use the same server combat path; no client position, eye offset, damage,
+  target, hit result or movement duration is accepted.
 
 ## Manual combat checklist (two instances, not agent-verified)
 
@@ -280,115 +285,26 @@ the connection panel to recapture, then release MB1 before firing.
    Fire projectiles/flame/heat/burn, Sword, sounds, cursor and repeated respawns work.
 
 
-## Checks completed for server revolver combat (2026-10-17)
-
-- Runtime Editor/development/release compilation and separate Editor compilation
-  passed against the main project's installed Unity/NGO/Transport assemblies.
-- `Tests/RunNetworkPolicyChecks.ps1`: **41 checks in each configuration** (123 total),
-  covering ownership/build gates, protected offline health, stale/duplicate/flood
-  requests, ammo/cooldown/manual and automatic reload, duplicate death, respawn reset,
-  actual overkill damage, killing-hit lifesteal, health caps and dead-attacker rejection.
-- Existing **33 Gunslinger + 44 heat + 16 camera visibility checks** passed.
-- Isolated native Unity setup twice, import/C# and NGO IL processing, and
-  `NetworkPrototypeBatchChecks.Run`: **37 host assertions passed**. Includes real
-  generated RPCs, PhysX wall blocking and another-hero hit, one host shot event,
-  duplicate/flood and invalid-aim rejection, actual killing-hit lifesteal, disabled
-  corpse collider, death rejection, server deadline respawn and stale-generation fire.
-  Also retains hero-change, ownership, teardown and reconnect checks. This uses the
-  existing cached Transport 2.6.0 validation project; main lockfile remains 2.7.4.
-  The unrelated UnityEditor.Search indexing exception still appears at startup.
-- Source/document whitespace checks passed. No source scene/prefab YAML was edited.
-
-No standalone build or manual two-instance combat, rendered effects, spatial-audio
-listening, keyboard/mouse behavior or full offline regression was run for this change.
-The checklist above is required before treating this milestone as gameplay-verified.
-
-
-## Moving-client shot timing correction (2026-10-17)
-
-The previous implementation smoothed the remote player's collision root on the server
-and sent fire intent before the next movement update. This could fire from a position
-behind the owner's screen even when both peers were running on localhost.
-
-- Each accepted shot carries the body pose and aim sampled together after local
-  movement/look. The same sample is published as ordinary movement before sending
-  the fire RPC. The RPC contains the pose so delivery order/coalescing cannot separate
-  a shot from its movement frame. The server derives the eye offset from its prefab.
-- Movement snapshots carry a per-life increasing sequence. The collision root applies
-  newer finite poses immediately; older/duplicate/dead/incorrect-life poses are ignored.
-  A shot carrying an older sample can still be evaluated from that sample without
-  rolling the actor's newer collision position backward. Previously accepted shot
-  samples cannot be reused for a later shot. Respawn/hero change reset all order state.
-- Smooth motion applies to the collider-free world presentation only, including on
-  the host. It retains its old visual pose when the collision root updates, then
-  approaches the newest position/yaw. Camera ownership and first-person visibility
-  remain unchanged. Death/respawn retain their revision and input protections.
-- This preserves the prototype's trusted owner movement. A movement body position is
-  not anti-cheat validated; clients still cannot choose damage/hits/ammo/eye offsets.
-  Historical target rewind, client prediction and authoritative movement are not added.
-  Moving-target disagreements caused by visual/network latency remain possible.
-- Both peers need the new code: **stop Play mode, allow import, rebuild the standalone
-  executable, and restart both sessions**. The pose/RPC wire format changed; do not
-  connect the old executable to the updated Editor. No scene setup, assets, packages
-  or project-setting changes are required.
-
-Focused manual retest (pending): shoot a stationary player from the standalone client
-while strafing left/right, moving forward/backward, jumping and stepping around cover.
-Repeat with roles reversed. Check closest walls still block, held fire/reload stay gated,
-remote bodies remain smooth, dead actors cannot move/fire, and repeated death/F6 hero
-changes/reconnects never apply an old pose or shot. Then test a moving target separately;
-this correction does not compensate for target history. Observe recoil/audio/visibility
-in both windows and recheck offline heroes before declaring gameplay validation complete.
-
-
-Automated validation for this correction: Runtime Editor/development/release and
-separate Editor compilation passed; **51 policy checks per configuration** (153 total),
-**33 Gunslinger + 44 heat + 16 camera checks**, and **45 isolated native host assertions**
-passed. Added coverage includes exact shot origin versus a delayed server shooter,
-non-finite/mismatched-life shot bodies, immediate collision pose application, preserved
-visual position/smoothing, and out-of-order/life pose rejection. The native non-owner
-branch uses a reflection-controlled ownership fixture, not a connected remote client.
-The isolated project still uses cached Transport 2.6.0; main compilation uses installed
-project assemblies. Its known unrelated UnityEditor.Search startup exception remains.
-No two-instance test, executable build, graphical/input/audio or offline gameplay test
-was performed for this correction. Also inspect player-to-player contact for visible
-collision jitter now that collision roots update independently from the rendered model.
-
-
 ## Network Gunslinger dash
 
-MB2 press requests one dash. The server validates RPC ownership/sender, selected
-Gunslinger definition, alive state, finite current-life body pose, monotonic request
-sequence, request rate, cooldown and active-dash state. Clients do not supply distance,
-duration or cooldown. Defaults remain **5 metres / 0.2 seconds / 5 seconds** in
-`Assets/Definitions/Heroes/GunslingerAbilities.asset`; the host's values govern online.
+A fresh MB2 press sets one edge in the fixed-step input command. The same shared motor
+starts prediction immediately and validates dash on the server using the selected hero,
+alive state, active travel and cooldown. No client distance/duration/cooldown is accepted.
+Defaults remain **5 metres / 0.2 seconds / 5 seconds** in
+`Assets/Definitions/Heroes/GunslingerAbilities.asset`; host definitions govern authority.
+Cooldown starts on activation. Holding/rejected presses do not repeat or queue.
 
-The server starts cooldown at acceptance and sends approval with the captured horizontal
-facing direction and its configured distance/duration. The owner then uses the existing
-GunslingerDash through FPSController's one CharacterController.Move. Ordinary horizontal
-movement is overridden, camera look and vertical velocity/gravity remain active, and a
-blocking side collision stops travel. Camera pitch and subsequent looking do not steer.
-Shooting, lifesteal, incoming damage and server reload timing continue normally. Dash
-provides no damage or immunity. Holding MB2 neither repeats nor queues another dash.
+Captured horizontal body yaw ignores pitch and cannot steer while active. CharacterController
+collision stops travel at walls; normal horizontal movement is overridden while gravity,
+vertical velocity, mouse look, shooting, damage/lifesteal and reload continue. No immunity or
+dash damage. The authoritative motor snapshots include dash state for prediction replay.
 
-This retains the current owner-authoritative movement policy. The server owns permission
-and cooldown, not a separate movement simulation or anti-cheat distance check. There is
-one network round trip before the owner's movement starts; prediction/correction can be
-considered with future authoritative movement work. Body poses replicate through the
-existing ordered movement stream, with observer world models smoothed independently.
-
-The owner HUD shows waiting/ready/server cooldown. Other players receive accepted start/
-stop presentation events but do not execute dash movement. Existing optional dash audio
-is local 2D for the owner and spatial for observers; optional particles stay under the
-first-person kit's visibility rules. No new art/audio is required. Missing references are
-safe. Remote HUDs stay disabled. Only one secondary is created for the selected kit.
-
-Wall, cursor release, focus loss, controller/component disable, F6 menu, death, hero change
-and disconnect cancel travel/pending approval. An approval that has not arrived within
-one second of the press is discarded rather than starting a delayed dash. Accepted cancellation keeps cooldown;
-respawn/hero change resets it. A late approval after cancellation, old-life request, old
-stop event or held input through recapture cannot start a new dash. The server has one
-active deadline; no deferred requests, queued dashes or coroutine timers accumulate.
+Owner HUD uses predicted/reconciled cooldown. Optional start/stop presentation is separate
+from movement; owner effects are predicted once, host/observers get accepted events. Optional
+audio remains owner 2D/observer spatial. Wall/cursor/focus/menu/disable/death/life changes stop
+travel; cancellation preserves cooldown. Life reset clears it. Remote actors have no dash HUD.
+Brief network jitter can reuse movement axes for at most 250 ms, but never repeats shots,
+jumps, reload or dash presses; a cursor/focus cancellation command ends that lease immediately.
 
 Setup: no new scene asset or prefab generation is needed with the existing Gunslinger
 assets. **Validate Local Multiplayer Test** checks its dash definition and exactly one
@@ -419,24 +335,24 @@ Manual two-instance dash checklist (pending agent gameplay validation):
    Fire/Sword behavior in MovementTest or the lobby Offline test.
 
 
-Automated dash validation completed:
+Current automated results are recorded in the latest AGENTS.md handoff. Historical milestone
+counts there refer to earlier implementations; the current native fixture exercises the shared
+server motor and compensated hitscan. Manual graphical/input/audio and latency/loss tests above
+are still required.
 
-- Runtime Editor/development/release and separate Editor compilation passed.
-- **72 policy checks per configuration** (216 total) passed, including dash owner/
-  hero/alive/pose/life/rate/cooldown gates, zero-cooldown overlap, cancellation and reset.
-- Existing **33 Gunslinger + 44 heat + 16 camera checks** passed.
-- **64 native single-host assertions** passed after real Unity import/NGO IL processing:
-  approval/cooldown snapshots, pitch-independent captured direction, duplicate/stale/
-  non-Gunslinger rejection, reload preservation, real controller wall stopping and
-  airborne velocity preservation, look without steering, shooting during dash, focus/
-  menu/death cancellation, respawn reset and one active owner dash/HUD. Native physics
-  is invoked directly; it does not simulate mouse/keyboard input or a connected client.
-- Clone setup ran twice. The existing smoothing check now takes an explicit short
-  timestep instead of assuming a short first frame after import. Disposal copy is
-  under ignored Builds/NetworkDashValidation (main Unity clears Temp). It uses current
-  cached packages including Transport 2.7.4, matching main compilation. Optional Editor
-  entitlement messages and the known Search startup exception still log independently.
-- Source/document whitespace checks passed. No source scene/prefab YAML was edited.
+## Repeating the headless wire check
 
-Two-instance gameplay, graphical visibility, audio listening, actual keyboard/mouse
-cancellation, executable builds and full offline gameplay remain manual checks above.
+This is a developer harness, separate from normal gameplay and user builds. Prepare the existing
+isolated `Builds/NetworkDashValidation` project with current Assets/Scripts and its cached package
+manifest; never run asset-generating batch checks in the main/open project. Copy
+`Tests/NetworkWireSmoke.cs` into that copy's `Assets/Scripts` only. Run Unity with
+`-batchmode -nographics -quit -projectPath <isolated-project> -executeMethod
+NetworkPrototypeBatchChecks.BuildWirePlayer`. This method refuses the main project and builds a
+Development Windows exe at `Builds/NetworkWireBuild/ClassFPS.exe`. Then run
+`powershell -ExecutionPolicy Bypass -File Tests/RunNetworkWireChecks.ps1` from the main checkout.
+The harness starts two hidden headless processes on localhost UDP 7777, so stop other sessions first.
+It uses a temporary flat physics fixture and artificial commands through the actual owner RPC,
+server motor, ammo/cooldown, dash snapshots, client prediction and reconciliation. It verifies
+acknowledgements, bounded final position error, resource updates and disconnect cleanup. The
+injected smoke MonoBehaviour exists only in the disposable copy/build, not normal project Assets.
+This does not test graphical input, interpolation appearance, audio, or latency/loss behavior.

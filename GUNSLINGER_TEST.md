@@ -89,10 +89,10 @@ or on-hit events, and cannot revive or clear burn.
 
 ## Online dash follow-up
 
-Gunslinger MB2 now uses server approval and a server-owned cooldown. Travel still runs
-through the owning player's existing CharacterController, with captured horizontal
-facing, gravity/vertical velocity preserved, shooting/reload allowed, wall stopping
-and no immunity/damage. Definition values stay in GunslingerAbilities.asset. Offline
-input and tuning behavior are unchanged. Rebuild the executable before connecting to
-the updated Editor. See MULTIPLAYER_TEST.md's network dash section for authority limits,
-waiting/ready HUD, cancellation/life guards and the two-instance gameplay checklist.
+Gunslinger MB2 uses the shared server-authoritative CharacterController motor with immediate
+owner prediction and snapshot reconciliation. The server owns configured distance/duration,
+cooldown and collision results. Captured horizontal facing ignores pitch; gravity/vertical
+velocity, shooting/reload and incoming damage continue, with no immunity/dash damage.
+Definition values stay in GunslingerAbilities.asset. Offline behavior is unchanged.
+Rebuild the executable and restart both peers. MULTIPLAYER_TEST.md contains current authority,
+rewind/correction limits, F7 opponent controls, cancellation/life guards and manual checks.

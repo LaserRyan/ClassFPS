@@ -8,36 +8,35 @@ public sealed class GunslingerDash : HeroSecondary
     private FPSController movement;
     private Vector3 direction;
     private readonly DashState state = new DashState();
-    private bool networkControlled, networkOwner, networkVisualActive;
+    private bool networkControlled, networkVisualActive;
     private float networkVisualUntil;
     internal Func<float> NetworkCooldownRemaining;
     internal bool NetworkRequestPending;
     internal void ConfigureNetwork(bool owner)
     {
         networkControlled = true;
-        networkOwner = owner;
         foreach (GunslingerDashHUD hud in GetComponentsInChildren<GunslingerDashHUD>(true)) hud.enabled = owner;
         foreach (AudioSource source in GetComponentsInChildren<AudioSource>(true))
         { source.enabled = true; source.spatialBlend = owner ? 0f : 1f; source.maxDistance = 40f; }
     }
-    // Only the network adapter calls this after server approval. Observers play presentation only.
+    // Network adapter presentation hook; travel lives in the shared authoritative/predicted motor.
     internal void BeginNetworkDash(Vector3 facing, float distance, float duration)
     {
         if (!networkControlled) return;
         Cancel();
         direction = Vector3.ProjectOnPlane(facing, Vector3.up).normalized;
-        if (networkOwner && !state.TryStart(Time.time, distance, duration, 0f, true, true)) return;
+
         networkVisualActive = true;
         networkVisualUntil = Time.time + duration;
         Started?.Invoke();
     }
     private void Update()
     {
-        if (networkControlled && !networkOwner && networkVisualActive && Time.time >= networkVisualUntil) Cancel();
+        if (networkControlled && networkVisualActive && Time.time >= networkVisualUntil) Cancel();
     }
     public event Action Started;
     public event Action Stopped;
-    public bool IsDashing => state.Active;
+    public bool IsDashing => networkControlled ? movement != null && movement.NetworkDashing : state.Active;
     public GunslingerDefinition Definition => definition;
     public FPSController Movement => movement;
     public float CooldownRemaining => networkControlled ? (NetworkCooldownRemaining?.Invoke() ?? 0f) : state.CooldownRemaining(Time.time);

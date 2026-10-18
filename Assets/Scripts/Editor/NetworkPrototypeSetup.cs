@@ -59,6 +59,7 @@ public static class NetworkPrototypeSetup
         manager.NetworkConfig.ConnectionApproval = true;
         manager.NetworkConfig.EnableSceneManagement = false;
         manager.NetworkConfig.TickRate = 30;
+        manager.NetworkConfig.ProtocolVersion = 2;
         const string listPath = "Assets/Prefabs/Network/NetworkPrefabs.asset";
         NetworkPrefabsList list = AssetDatabase.LoadAssetAtPath<NetworkPrefabsList>(listPath);
         if (list == null)

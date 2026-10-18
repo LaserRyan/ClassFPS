@@ -9,9 +9,6 @@ public sealed partial class NetworkPrototypePlayer
     private readonly NetworkVariable<NetworkCombatSnapshot> combatState = new NetworkVariable<NetworkCombatSnapshot>();
     private readonly NetworkRevolverState revolver = new NetworkRevolverState();
     private bool fireRequiresRelease = true;
-    private uint requestSequence;
-    private uint lastFirePoseSequence;
-    private float nextFireIntent;
     private AudioSource worldShotAudio;
     private Collider[] actorColliders;
     private bool[] colliderDefaults;
@@ -22,8 +19,6 @@ public sealed partial class NetworkPrototypePlayer
 
     private void ResetServerCombat()
     {
-        serverDash.Reset(hero.Value.Revision);
-        lastFirePoseSequence = 0;
         GunWeaponDefinition gun = ServerGun;
         revolver.Reset(hero.Value.Revision, gun != null ? gun.MagazineCapacity : 0);
         combatState.Value = new NetworkCombatSnapshot { Generation = hero.Value.Revision,
@@ -39,7 +34,7 @@ public sealed partial class NetworkPrototypePlayer
             {
                 NetworkHeroState next = hero.Value;
                 next.Revision++;
-                next.Spawn = NetworkPrototypeSession.Active.SpawnFor(OwnerClientId);
+                next.Spawn = IsTestOpponent ? initialHero.Spawn : NetworkPrototypeSession.Active.SpawnFor(OwnerClientId);
                 next.Yaw = NetworkPrototypeSession.Active.SpawnYaw;
                 hero.Value = next;
             }
@@ -53,7 +48,7 @@ public sealed partial class NetworkPrototypePlayer
         NetworkCombatSnapshot state = combatState.Value;
         state.Ammo = revolver.Ammo; state.Reloading = revolver.ReloadAt > 0;
         state.Dead = revolver.Dead; state.RespawnAt = revolver.RespawnAt;
-        state.DashReadyAt = serverDash.ReadyAt;
+        state.DashReadyAt = movement.NetworkDashReady;
         combatState.Value = state;
     }
     private void OnCombatChanged(NetworkCombatSnapshot previous, NetworkCombatSnapshot current) => ApplyCombatSnapshot();
@@ -75,66 +70,25 @@ public sealed partial class NetworkPrototypePlayer
         }
         if (state.Dead) { CancelLocalDashRequest(); fireRequiresRelease = true; if (worldShotAudio != null) worldShotAudio.Stop(); }
     }
-    private void ReadCombatInput()
+    private void ExecuteServerCombat(NetworkMoveCommand command)
     {
-        Mouse mouse = Mouse.current;
-        bool held = mouse != null && mouse.leftButton.isPressed;
-        if (!movement.CanAcceptGameplayInput || combatState.Value.Dead || pendingChange ||
-            !(selection.SelectedKit.PrimaryWeapon is HitscanGun) || CurrentHeroId != "prototype.gun")
-        { fireRequiresRelease = held; return; }
-        if (!held) fireRequiresRelease = false;
-        if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
-            RevolverIntentRpc(appliedRevision, ++requestSequence, CapturePose(), Vector3.forward, true);
-        if (held && !fireRequiresRelease && Time.unscaledTime >= nextFireIntent)
-        {
-            // No prediction, buffering or local ammo consumption. Server accepts each shot.
-            nextFireIntent = Time.unscaledTime + .05f;
-            NetworkPlayerPose shotPose = CapturePose();
-            pose.Value = shotPose;
-            nextPoseAt = Time.unscaledTime + 1f / 30f;
-            RevolverIntentRpc(appliedRevision, ++requestSequence, shotPose, movement.PlayerCamera.transform.forward, false);
-        }
-    }
-    private static bool ValidAim(Vector3 aim) => !float.IsNaN(aim.x) && !float.IsNaN(aim.y) && !float.IsNaN(aim.z) &&
-        !float.IsInfinity(aim.x) && !float.IsInfinity(aim.y) && !float.IsInfinity(aim.z) &&
-        aim.sqrMagnitude > .9f && aim.sqrMagnitude < 1.1f;
-
-    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-    private void RevolverIntentRpc(uint generation, uint sequence, NetworkPlayerPose shotPose, Vector3 aim, bool reload, RpcParams rpc = default)
-    {
-        if (!revolver.Request(generation, sequence, ServerNow, rpc.Receive.SenderClientId == OwnerClientId)) return;
+        if (!IsServer || !command.Has(NetworkMoveCommand.Allowed) ||
+            !revolver.Request(command.Generation, command.Sequence, ServerNow, true)) return;
         GunWeaponDefinition gun = ServerGun;
-        if (gun == null || combatState.Value.Dead || !ValidAim(aim) || !shotPose.IsFinite ||
-            shotPose.Revision != generation || shotPose.Sequence == 0 ||
-            (!reload && shotPose.Sequence <= lastFirePoseSequence)) return;
+        if (gun == null || combatState.Value.Dead) return;
+        bool reload = command.Has(NetworkMoveCommand.Reload);
+        if (!reload && !command.Has(NetworkMoveCommand.Fire)) return;
+        uint generation = command.Generation;
         if (reload)
         { revolver.Reload(ServerNow, gun.MagazineCapacity, gun.ReloadDuration); PublishCombat(); return; }
         if (!revolver.Fire(ServerNow, gun.Cooldown, gun.MagazineCapacity, gun.ReloadDuration, gun.AutomaticReload))
         { PublishCombat(); return; }
-        lastFirePoseSequence = shotPose.Sequence;
         PublishCombat();
-        // Same-frame body pose follows the existing owner-authoritative movement policy.
-        // It may arrive after a newer ordinary pose: never roll collision state backwards.
-        ApplyRemotePose(shotPose);
         Physics.SyncTransforms();
-        // Server supplies the eye offset; the owner supplies body movement, never an eye origin.
-        Vector3 origin = shotPose.Position + Quaternion.Euler(0f, shotPose.Yaw, 0f) *
-            movement.PlayerCamera.transform.localPosition;
+        Vector3 origin = transform.TransformPoint(movement.PlayerCamera.transform.localPosition);
         LastServerShotOrigin = origin;
-        Ray ray = new Ray(origin, aim.normalized);
-        HitscanGun source = selection.SelectedHero.KitPrefab.PrimaryWeapon as HitscanGun;
-        RaycastHit[] hits = Physics.RaycastAll(ray, gun.Range, source.HitLayers, QueryTriggerInteraction.Ignore);
-        float nearest = float.PositiveInfinity;
-        Vector3 endpoint = ray.GetPoint(gun.Range);
-        NetworkPrototypePlayer target = null;
-        foreach (RaycastHit hit in hits)
-        {
-            if (hit.collider.transform.IsChildOf(transform)) continue;
-            NetworkPrototypePlayer actor = hit.collider.GetComponentInParent<NetworkPrototypePlayer>();
-            if (actor != null && actor.combatState.Value.Dead) continue;
-            if (hit.distance >= nearest) continue;
-            nearest = hit.distance; endpoint = hit.point; target = actor;
-        }
+        Ray ray = new Ray(origin, Quaternion.Euler(command.Pitch, command.Yaw, 0) * Vector3.forward);
+        NetworkPrototypePlayer target = ResolveCompensatedHit(ray, gun.Range, command.Time, out Vector3 endpoint);
         float actual = target != null && target != this ? target.ServerDamage(gun.Damage) : 0f;
         if (actual > 0 && selection.SelectedHero.PassivePrefab != null)
         {
@@ -156,7 +110,7 @@ public sealed partial class NetworkPrototypePlayer
         float actual = NetworkRevolverState.ActualDamage(state.Health, damage);
         state.Health -= actual;
         if (state.Health <= 0 && revolver.Die(ServerNow, networkRespawnDelay))
-        { StopServerDash(hero.Value.Revision, serverDash.ActiveRequest);
+        { StopServerDash();
           state.Dead = true; state.Reloading = false; state.RespawnAt = revolver.RespawnAt; }
         combatState.Value = state;
         return actual;
@@ -169,7 +123,7 @@ public sealed partial class NetworkPrototypePlayer
         if (gun == null) return;
         gun.NetworkPresentation = true;
         // Existing event subscribers supply recoil, tracer, world kick and confirmed crosshair.
-        gun.PresentNetworkShot(endpoint, IsOwner && hit);
+        gun.PresentNetworkShot(endpoint, HasLocalControl && hit);
         selection.SelectedWorldPresentation?.PresentNetworkShot(endpoint);
         PlayerWeaponAudio audio = selection.SelectedKit.GetComponentInChildren<PlayerWeaponAudio>(true);
         if (audio == null || audio.GunClip == null) return;
@@ -180,7 +134,7 @@ public sealed partial class NetworkPrototypePlayer
             worldShotAudio.rolloffMode = AudioRolloffMode.Linear;
             worldShotAudio.minDistance = 1; worldShotAudio.maxDistance = 40;
         }
-        worldShotAudio.spatialBlend = IsOwner ? 0f : 1f;
+        worldShotAudio.spatialBlend = HasLocalControl ? 0f : 1f;
         worldShotAudio.PlayOneShot(audio.GunClip, audio.GunVolume);
     }
 }

@@ -8,7 +8,7 @@ using UnityEngine;
 [DefaultExecutionOrder(-1000)]
 [RequireComponent(typeof(NetworkManager), typeof(UnityTransport))]
 [DisallowMultipleComponent]
-public sealed class NetworkPrototypeSession : MonoBehaviour
+public sealed partial class NetworkPrototypeSession : MonoBehaviour
 {
     [SerializeField] private HeroDefinition[] heroes;
     [SerializeField] private NetworkPrototypePlayer playerPrefab;
@@ -134,6 +134,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     }
     private void Disconnected(ulong clientId)
     {
+        RemoveTestOpponentFor(clientId);
         approved.Remove(clientId);
         slots.Remove(clientId);
         if (clientId == manager.LocalClientId)
@@ -154,6 +155,7 @@ public sealed class NetworkPrototypeSession : MonoBehaviour
     {
         if (!ValidateConfiguration(out message)) return;
         if (manager.IsListening || manager.ShutdownInProgress || connecting) return;
+        manager.NetworkConfig.ProtocolVersion = 2;
         manager.NetworkConfig.ConnectionApproval = true;
         manager.NetworkConfig.EnableSceneManagement = false; // Both instances explicitly load the same test scene.
         manager.NetworkConfig.ConnectionData = Encoding.UTF8.GetBytes(heroes[Mathf.Clamp(chosenHero, 0, heroes.Length - 1)].HeroId);

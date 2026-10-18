@@ -8,6 +8,10 @@ public static class NetworkPolicyChecks
     public static void Main()
     {
         bool dev = NetworkTestRules.DevelopmentFeatures;
+        Check(NetworkTestRules.CanUseOpponent(true, true, true) == dev, "opponent compile-time development gate");
+        Check(!NetworkTestRules.CanUseOpponent(false, true, true), "opponent setting disabled");
+        Check(!NetworkTestRules.CanUseOpponent(true, false, true), "opponent requires connected owned player");
+        Check(!NetworkTestRules.CanUseOpponent(true, true, false), "opponent controller permissions");
         Check(NetworkTestRules.CanChangeHero(true, true, true, false, 1, 1) == dev, "compiled development gate");
         Check(!NetworkTestRules.CanChangeHero(false, true, true, false, 1, 1), "server setting disabled");
         Check(!NetworkTestRules.CanChangeHero(true, false, true, false, 1, 1), "wrong owner");

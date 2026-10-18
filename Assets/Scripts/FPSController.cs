@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 [DisallowMultipleComponent]
-public sealed class FPSController : MonoBehaviour
+public sealed partial class FPSController : MonoBehaviour
 {
     [SerializeField] private Camera playerCamera;
     [SerializeField, Min(0f)] private float movementSpeed = 5f;
@@ -124,6 +124,8 @@ public sealed class FPSController : MonoBehaviour
             jumpPressed = keyboard.spaceKey.wasPressedThisFrame;
         }
 
+        if (NetworkDriven) { networkJump |= jumpPressed; return; }
+
         if (!controller.enabled || Time.deltaTime <= 0f)
         {
             Dash?.Cancel();
@@ -199,6 +201,7 @@ public sealed class FPSController : MonoBehaviour
         controller.enabled = false;
         transform.SetPositionAndRotation(position, Quaternion.Euler(0f, facing.eulerAngles.y, 0f));
         verticalVelocity = 0f;
+        networkDashLeft = 0; networkDashReady = 0; networkJump = false; networkGrounded = false;
         pitch = 0f;
         if (playerCamera != null)
             playerCamera.transform.localRotation = Quaternion.identity;

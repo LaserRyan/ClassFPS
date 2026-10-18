@@ -779,3 +779,64 @@ This supersedes earlier statements that all online combat is disabled.
   pending two-instance dash checks. No standalone build, two-instance dash gameplay,
   graphical/input/audio or full offline gameplay validation performed by the agent.
   Chat-only reports retained; unrelated untracked root file remains untouched.
+
+### Authoritative movement, bounded rewind and test opponent (2026-10-18)
+
+This supersedes earlier owner-authoritative pose/shot-body and approval-before-dash descriptions.
+The user reports the previous network dash working; that does not establish the full checklist.
+
+- NGO 2.13.3 / Transport 2.7.4 remain. Protocol version 2 prevents old wire clients joining.
+  Fixed 30 Hz commands carry normalized axes, yaw/pitch, life, sequence, time and action bits;
+  no client position, velocity, duration, eye origin, hit, damage or tuning is accepted.
+  Server validates ownership/life/finite values/angles/time, bounds burst/queue/rate, and
+  simulates CharacterController movement/jump/gravity/dash using its hero definitions.
+- FPSController.Network shares the collision motor with owner prediction. Server snapshots
+  acknowledge input and carry velocity, grounding and dash state; client restores/replays
+  unacknowledged commands without replaying combat/effects. Immediate mouse look survives
+  correction. Host executes the motor once. Bounded prediction/history buffers reset on life
+  and kit changes. Dead actors cannot submit movement; respawn is server-owned.
+- Brief jitter reuses movement axes for at most 250 ms, never action edges or shots. Explicit
+  input cancellation clears pending commands/travel while preserving reload/cooldown. Cursor,
+  focus, menus and disables retain fresh-input requirements. Dash predicts immediately,
+  captures horizontal yaw, collides on the server and reconciles without granting immunity.
+- Observer world presentation interpolates timestamped poses with server-advertised 100 ms
+  delay. Server keeps gameplay-capsule history; revolver uses analytical historical capsule
+  tests bounded by RTT, render delay, NGO's 50 ms server-clock buffer and 35 ms tolerance and a 200 ms default cap. Current static
+  physics walls block hits. No live transforms are rewound, no bone/mesh dependencies added.
+  History clears each life; dead actors are excluded. Actual damage/lifesteal remains server-only.
+- Tradeoffs: a recent shot may hit just after cover within the rewind bound; high latency
+  beyond the bound is uncompensated. Reliable commands and moving-actor collisions can produce
+  corrections under loss/jitter. This prototype is not comprehensive anti-cheat, arbitrary
+  hitbox/world-geometry rewind or a finished competitive prediction system.
+- Allow Test Opponent on Network Prototype Session defaults off; server also enforces Editor/
+  development build and connected-player/controller permissions. F7 releases input for one
+  server-owned Gunslinger: spawn, stand/strafe, fire once/repeat, reset/remove. Same server motor,
+  revolver, health, lifesteal, death/respawn and world presentation; no local camera/listener/
+  HUD/offline lifecycle. Creator or host controls it; creator disconnect removes it. F6/F7
+  menus are mutually exclusive. No other online kit attacks, teams or match rules added.
+- Tuning: Session Interpolation Delay / Maximum Rewind; existing hero, GunPrototype weapon
+  and GunslingerAbilities assets govern gameplay. Optional art/audio and model replaceability
+  remain separate from motor/hitboxes. Setup/validator reuse existing assets/components with
+  no source scene/prefab YAML, package, layer or project-setting changes.
+- MULTIPLAYER_TEST.md is the current setup/build/manual checklist; GUNSLINGER_TEST.md points
+  to current online authority. Reports remain chat-only. The unrelated ProjectSettings edit
+  and unusual untracked root file are preserved.
+- Completed automated checks: Runtime compilation in Editor/development/release, separate
+  Editor compilation, 76 network policy/combat checks per configuration (228 total), existing
+  33 Gunslinger / 44 heat / 16 camera checks, and isolated native Unity import/NGO IL processing
+  plus 58 host assertions. Native includes fixed motor restore/replay consistency, real wall
+  collision, airborne dash/cooldown, invalid/stale/duplicate/flood command rejection, protected
+  health, actual killing-hit lifesteal, current-wall occlusion, historical moving-capsule hit,
+  life-history reset, opponent camera/HUD isolation/fire-once/real damage, all hero changes,
+  one kit/world, teardown and reconnect. Known unrelated UnityEditor.Search startup exception
+  remains in the isolated Editor log; optional package entitlement messages can also appear.
+- A Development Windows build and two hidden headless localhost processes were additionally
+  exercised using Tests/NetworkWireSmoke.cs (injected only into the disposable validation
+  copy/build) and Tests/RunNetworkWireChecks.ps1. Actual owner RPCs, server movement, prediction/
+  reconciliation acknowledgements, ammo, dash snapshots and disconnect cleanup were tested.
+  This artificial flat-fixture run is not graphical input/feel/audio or a latency/loss test.
+  Validation artifacts stay ignored under Builds; the normal gameplay executable must be rebuilt.
+- Still manual: normal Editor-host/standalone-client controls and visuals/audio, high latency/
+  jitter/loss correction feel, camera visibility, slope/corner/player contacts, held-input and
+  focus/menu cancellation, repeated multiplayer combat/respawn, release-host wire rejection,
+  and full offline hero regression. See MULTIPLAYER_TEST.md for precise steps.
